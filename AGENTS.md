@@ -20,6 +20,7 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 - Phone evidence supports three explicitly selectable visual systems: Google Android, Huawei EMUI, and Apple iPhone.
 - Search inside an open conversation accepts arbitrary message text, sender/contact names, and numbers without changing the global archive search, matching state, or XML data.
 - The Apple iPhone preview follows recognizable iMessage anatomy with a realistic device frame, status bar, conversation header, message bubbles, search surface, composer, and light/dark treatment.
+- For the Apple iPhone conversation view, use the user-supplied iMessage screenshot as the visual source of truth: mirrored Arabic status bar, large centered contact avatar/name pill, left-aligned incoming gray bubbles with tails, blue auto-detected links/numbers, and timestamp separators between message groups.
 - The phone status-bar clock can use the original SMS time, the live current time, or a user-entered time; this is a display preference and must not mutate XML timestamps.
 - Evidence status rows show the Arabic status label and its timestamp only; raw XML field names such as `date` and `date_sent` remain internal and never appear in the phone preview or exported evidence image.
 - The sender aliases `AMANA 940`, `EJADH`, and the old Jeddah municipality contact label render as the corrected sender identity `EJADA`.

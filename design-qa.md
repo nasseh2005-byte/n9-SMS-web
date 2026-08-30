@@ -1,83 +1,74 @@
-# N9 SMS Design QA — Evidence Selection Update
+# N9 SMS Design QA — iPhone iMessage Conversation
 
 ## Comparison Target
 
-- Source visual truth: `C:\Users\win\Downloads\1591714.pdf`.
-- Rendered source: `G:\ملفاتي\+N9 SMS\tmp\pdfs\reference-1.png`.
-- Browser-rendered implementation: `C:\Users\win\.codex\local-prototypes\n9-sms-web\implementation-desktop-final-v2.png`.
-- Same-state implementation capture: `C:\Users\win\.codex\local-prototypes\n9-sms-web\implementation-qa-full-v2.png`.
-- Focused phone crop: `C:\Users\win\.codex\local-prototypes\n9-sms-web\implementation-phone-qa-v2.png`.
-- Side-by-side comparison evidence: `C:\Users\win\.codex\local-prototypes\n9-sms-web\design-qa-comparison-v2.png`.
-- State: dark Arabic SMS details view for the AMANA 940 message containing license number `1523486575`, violation details, payment number, link, and payment instructions.
+- Source visual truth: `C:\Users\nasse\AppData\Local\Temp\codex-clipboard-6dd16c1a-c085-43f8-93f6-d808968e5534.png`.
+- Stable source copy: `G:\My Drive\+N9 SMS\N9-SMS-Web\qa-iphone-imessage-source.png`.
+- Final implementation capture: `G:\My Drive\+N9 SMS\N9-SMS-Web\qa-iphone-imessage-implementation-pass2.png`.
+- Full normalized comparison: `G:\My Drive\+N9 SMS\N9-SMS-Web\qa-iphone-imessage-comparison-pass2.png`.
+- Focused header comparison: `G:\My Drive\+N9 SMS\N9-SMS-Web\qa-iphone-imessage-header-comparison-pass2.png`.
+- Dark-mode verification: `G:\My Drive\+N9 SMS\N9-SMS-Web\qa-iphone-imessage-dark.png`.
+- State: Arabic `EJADA` conversation, Apple iPhone visual system, light theme, conversation view, search closed.
 
 ## Viewport And Normalization
 
-- Browser viewport: 1440 x 980 CSS px, deviceScaleFactor 1.
-- Responsive browser check: 390 x 844 CSS px, deviceScaleFactor 1.
-- Source PNG: 1190 x 1684 px; source phone-content crop: 778 x 1684 px.
-- Implementation full screenshot: 1440 x 980 px; implementation phone-screen crop: 349 x 704 px.
-- Normalization: source crop and implementation crop were both resized to 900 px high with preserved aspect ratio and placed together on one canvas. Resulting visible comparison widths were 416 px and 446 px.
-- The focused phone comparison was necessary because typography, URL wrapping, timestamp provenance, and status-row spacing were not readable enough in the full desktop view.
+- Browser viewport: local desktop prototype at `http://127.0.0.1:5173/`, deviceScaleFactor 1.
+- Captured iPhone surface: approximately 347 x 518 CSS px.
+- Source image: 1024 x 1536 px.
+- The source and implementation were each resized to the same 347 x 518 comparison region and placed side by side.
+- A separate top-region comparison was required because the mirrored status bar, count capsule, avatar, name pill, and translucent header are the highest-fidelity surfaces and are less legible in the full comparison.
 
-## Findings
+## Source-Of-Truth Anatomy
 
-- No actionable P0, P1, or P2 findings remain.
-- [P3] The implementation uses Noto Sans Arabic instead of the Android system Arabic typeface in the PDF. Its weight, wrapping, and hierarchy remain close and readable.
-- [Historical note] A prior iteration showed raw XML field names as secondary labels. The current user-approved design hides `XML · date` and `XML · date_sent` while preserving their exact timestamp values internally.
-
-## Required Fidelity Surfaces
-
-- Fonts and typography: Noto Sans Arabic 400/500/600/700 is bundled locally. Title, section labels, body text, status rows, Latin fragments, and long URL wrapping were inspected in the combined image. No clipping or spill outside the message bubble remains.
-- Spacing and layout rhythm: the status bar, details header, proof card, centered message bubble, state block, metadata, and Android navigation retain the source hierarchy. The desktop dashboard keeps matching, conversation browsing, and phone preview visually distinct.
-- Colors and tokens: the default dark mode closely maps to the source's near-black phone surface, black proof card, charcoal message bubble, blue section labels, and light text. The light theme also passed contrast and overflow checks.
-- Image quality and asset fidelity: the reference contains UI, not photographic assets. All icons use Material Design Icons; no custom SVG, CSS icon drawing, or placeholder imagery is used. Export remains a 2x PNG.
-- Copy and content: the reference message is preserved, including the full URL and payment instructions. Search and match snippets are dynamic XML content. Exact XML dates are never rewritten; derived times are labeled as estimates.
-- Icons: status, navigation, import, copy, theme, matching, export, and Android controls use one consistent icon family and align optically in dark and light modes.
-- States and interactions: search-without-filtering, result selection, manual candidate choice, automatic recommendation reset, copy, dark/light theme toggle, conversation/detail switch, matching, responsive layouts, and empty/selected states were exercised.
-- Accessibility: semantic controls and Arabic labels are present, focus rings remain visible, and mobile controls stay within the 390 px viewport. No horizontal overflow occurs at desktop or mobile widths.
+- Mirrored Arabic status bar: clock on the right; battery percentage, 5G, and signal on the left; Dynamic Island centered.
+- Translucent conversation header with a large centered blue contact avatar and white contact-name pill.
+- White back/count pill on the right with an inner black count capsule and chevron.
+- Incoming messages aligned left in light-gray bubbles with bottom-left tails.
+- Arabic copy in black with iOS-blue underlined URLs and long numeric identifiers.
+- Centered gray timestamp separators between message groups.
 
 ## Comparison History
 
-### Earlier baseline iteration
+### Pass 1
 
-- Earlier P2 issues: the status-bar clock was fixed, received/sent rows reused one timestamp, long links could visually dominate the bubble, search replaced the conversation list, and bulk matching offered no per-number evidence choice.
-- Fixes made: status-bar time now follows the selected message; `date` and `date_sent` are displayed directly from XML; a deterministic 3–5 minute value is added only when a timestamp is absent and is visibly labeled estimated; URL wrapping is constrained to the bubble; search results are additive; matching is grouped per number with manual or smart selection; exports use only final choices.
-- Post-fix evidence: browser checks reported seven conversations still visible while four search results were shown; the long URL bounds remained inside the proof bubble; switching messages changed the status time from 3:10 PM to 2:56 PM; manual choice changed the preview and smart mode restored the highest-ranked candidate.
+- [P2] Status clock and indicators were smaller than the reference.
+- [P2] Back/count control lacked the prominent white pill and black inner counter.
+- [P2] Contact-name pill was undersized and the light header divider was too visible.
+- [P2] Message text and auto-detected links lacked the source's scale and iOS-blue emphasis.
+- [P2] Bubble tails were too subtle.
+- Fixes: enlarged the status metrics and name pill, rebuilt the count control, removed the light divider, adjusted bubble width/type rhythm, changed iPhone link color to `#007aff`, and strengthened bubble tails.
 
-### Final visual pass
+### Pass 2
 
-- Source and implementation were opened together in `design-qa-comparison-v2.png`.
-- The message proof card, RTL hierarchy, link wrapping, status rows, dark surfaces, blue labels, and bottom navigation were visually compared at equal height.
-- No P0/P1/P2 fix was required after this comparison.
+- Full view and focused header were compared in the same visual inputs at equal dimensions.
+- No actionable P0, P1, or P2 fidelity issue remains.
+- [P3] The source screenshot is cropped before the composer while the implementation retains a real iMessage-style composer and device frame. Both are durable prototype-owned surfaces.
+- [P3] Message copy, message count, and clock differ because the implementation renders the active archive rather than hard-coded screenshot content.
+- The search button remains intentionally visible because searching by text, sender name, or number inside the conversation is a durable product requirement.
 
 ## Functional Verification
 
-- Search: `1523486575` returned four message results while all seven sample conversations remained present.
-- Link containment: the rendered link bounding box stayed fully inside `.message-proof-bubble`.
-- Copy: clipboard content contained the complete selected message and URL.
-- Theme: both `theme-dark` and `theme-light` rendered without horizontal overflow.
-- Time semantics: the selected message's status-bar time matched its XML-backed status row; changing the selected message changed the displayed time. Exact sample `date` and `date_sent` values showed a four-minute difference.
-- Smart/manual matching: three requested numbers produced three selected evidence rows. A manual alternative changed the preview; returning to smart mode restored the top-ranked candidate.
-- Spreadsheet parsing: an in-memory XLSX workbook containing `1591714`, `1523486575`, and `2000000` returned exactly those three numeric terms.
-- Real XML inspection: the provided file contains 36,642 `<sms>` records with separate `date` and `date_sent` attributes where present. The application maps both directly without mutation.
-- Responsive check: 390 x 844 rendered with no horizontal overflow and the phone frame stayed inside the viewport.
-- Build: `npm run build` passed.
-- Sites worker tests: 5/5 passed.
-- Browser console: zero errors after a fresh final reload.
+- In-thread text search for `عزيزي` returned 3 of 4 messages without an empty state.
+- In-thread sender-name search for `EJADA` returned all 4 messages, confirming the query covers message body, address, and contact name.
+- Search was closed after the check and does not mutate archive data, selection, or XML timestamps.
+- The phone remained horizontally contained; the measured two-pixel scroll-width delta is the intentional device-frame border, not content overflow.
+- Dark mode rendered with the same iMessage anatomy, readable incoming bubbles, blue links, and visible composer controls.
+- Sender normalization remains `EJADA`; the historical aliases are not shown in the preview.
+- Final build and automated test results are recorded below after execution.
 
-## Implementation Checklist
+## Required Fidelity Surfaces
 
-- [x] Preserve exact XML `date` and `date_sent` values.
-- [x] Label derived 3–5 minute times as estimates.
-- [x] Keep links inside the SMS bubble.
-- [x] Make search additive and keep all conversations available.
-- [x] Add message copy and dark/light theme controls.
-- [x] Group multiple spreadsheet numbers with manual and smart evidence selection.
-- [x] Export only the selected evidence rows to ZIP/CSV.
-- [x] Verify desktop and mobile layouts, build, console, and packaging tests.
+- Typography and links: Arabic body copy remains readable, URLs and long numeric identifiers are auto-detected and styled as iOS links, and wrapping stays within the bubble.
+- Layout and spacing: status bar, header backdrop, avatar, name pill, back counter, separators, bubbles, and composer retain the reference hierarchy.
+- Colors: light mode uses white, iOS gray, black, and `#007aff`; dark mode uses near-black surfaces and readable iOS gray bubbles.
+- Icons: Material Design Icons are used consistently; no custom SVG or hand-drawn CSS icon asset was introduced.
+- States and interactions: conversation search, empty state, theme toggle, message selection, and the existing Android/Huawei systems remain available.
+- Accessibility: controls keep Arabic accessible names, the search field receives focus when opened, and content remains usable in the phone viewport.
 
-## Follow-up Polish
+## Build Verification
 
-- Optional P3: virtualize very large candidate lists if one number matches thousands of messages.
+- `npm test`: passed, 20/20 tests.
+- `npm run build`: passed; emitted `dist/client/index.html`, `dist/server/index.js`, and `dist/.openai/hosting.json`.
+- `npm run test:sites`: passed, 5/5 tests.
 
 final result: passed

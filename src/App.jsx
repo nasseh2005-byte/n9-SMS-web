@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "@mdi/react";
 import {
   mdiAlertCircleOutline,
+  mdiAccount,
   mdiAccountMultipleOutline,
   mdiBatteryHigh,
   mdiCameraOutline,
@@ -9,6 +10,7 @@ import {
   mdiCheck,
   mdiCheckCircle,
   mdiChevronDown,
+  mdiChevronLeft,
   mdiChevronRight,
   mdiClose,
   mdiContentCopy,
@@ -38,7 +40,6 @@ import {
   mdiTriangleOutline,
   mdiTrayArrowUp,
   mdiTuneVariant,
-  mdiVideoOutline,
   mdiWeatherNight,
   mdiWhiteBalanceSunny,
   mdiWifi,
@@ -98,6 +99,17 @@ function formatShortDate(value) {
     month: "short",
     day: "numeric",
   }).format(new Date(value));
+}
+
+function formatIphoneThreadStamp(value) {
+  if (!parseXmlTimestamp(value)) return "غير متوفر";
+  const messageDate = new Date(value);
+  const today = new Date();
+  const dayStart = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate()).getTime();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const dayDifference = Math.round((todayStart - dayStart) / 86_400_000);
+  const dayLabel = dayDifference === 0 ? "اليوم" : dayDifference === 1 ? "أمس" : formatShortDate(value);
+  return `${dayLabel} ${formatTime(value)}`;
 }
 
 function getInitials(name = "؟") {
@@ -219,18 +231,31 @@ function StatusBar({ clockMode = "message", customTime = "09:41", deviceStyle = 
       <span>{displayedTime}</span>
       <span className="device-cutout" aria-hidden="true"><span className="device-cutout-lens" /></span>
       <div className="phone-status-icons">
-        <Icon path={mdiSignal} size={0.62} />
-        <Icon path={mdiWifi} size={0.64} />
-        <span className="network-label">{deviceStyle === "iphone" ? "5G" : "4G"}</span>
-        <Icon path={mdiBatteryHigh} size={0.78} />
+        {deviceStyle === "iphone" ? (
+          <>
+            <span className="ios-battery-level">54</span>
+            <span className="ios-network-type">5G</span>
+            <Icon path={mdiSignal} size={0.68} />
+          </>
+        ) : (
+          <>
+            <Icon path={mdiSignal} size={0.62} />
+            <Icon path={mdiWifi} size={0.64} />
+            <span className="network-label">4G</span>
+            <Icon path={mdiBatteryHigh} size={0.78} />
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function LinkifiedBody({ body }) {
-  const parts = String(body).split(/(https?:\/\/\S+)/g);
-  return parts.map((part, index) => part.startsWith("http")
+function LinkifiedBody({ body, deviceStyle = "android" }) {
+  const pattern = deviceStyle === "iphone"
+    ? /(https?:\/\/\S+|[0-9٠-٩۰-۹]{7,})/g
+    : /(https?:\/\/\S+)/g;
+  const parts = String(body).split(pattern);
+  return parts.map((part, index) => (/^https?:\/\//.test(part) || (deviceStyle === "iphone" && /^[0-9٠-٩۰-۹]{7,}$/.test(part)))
     ? <span className="message-link" key={`${part}-${index}`}>{part}</span>
     : <span key={`${part}-${index}`}>{part}</span>);
 }
@@ -267,11 +292,20 @@ function ConversationPhone({ clockMode, conversation, customTime, deviceStyle, s
     <div className={`phone-screen conversation-phone device-${deviceStyle} ${theme === "light" ? "phone-light" : ""}`} dir="rtl">
       <StatusBar clockMode={clockMode} customTime={customTime} deviceStyle={deviceStyle} value={phoneTime} />
       <header className="phone-conversation-header">
-        <button aria-label="رجوع" className="phone-icon-button" type="button"><Icon path={mdiChevronRight} size={1.1} /></button>
+        {deviceStyle === "iphone" && (
+          <div className="ios-header-message-backdrop" aria-hidden="true">
+            <LinkifiedBody body={allMessages.at(-2)?.body || allMessages.at(-1)?.body || ""} deviceStyle="iphone" />
+          </div>
+        )}
+        <button aria-label="رجوع" className={`phone-icon-button ${deviceStyle === "iphone" ? "ios-thread-back" : ""}`} type="button">
+          {deviceStyle === "iphone" && <span>{allMessages.length.toLocaleString("ar-SA-u-nu-latn")}</span>}
+          <Icon path={mdiChevronRight} size={deviceStyle === "iphone" ? 1.25 : 1.1} />
+        </button>
         <div className="phone-contact">
-          <span className="phone-avatar">{getInitials(conversation?.contactName)}</span>
-          <span>
+          <span className="phone-avatar">{deviceStyle === "iphone" ? <Icon path={mdiAccount} size={1.8} /> : getInitials(conversation?.contactName)}</span>
+          <span className="phone-contact-title">
             <strong>{conversation?.contactName}</strong>
+            {deviceStyle === "iphone" && <Icon path={mdiChevronLeft} size={0.72} />}
             <small>{conversation?.address} · {allMessages.length.toLocaleString("ar-SA")} رسالة</small>
           </span>
         </div>
@@ -283,7 +317,7 @@ function ConversationPhone({ clockMode, conversation, customTime, deviceStyle, s
             onClick={() => setSearchOpen((value) => !value)}
             type="button"
           ><Icon path={mdiMagnify} size={1.02} /></button>
-          <button aria-label={deviceStyle === "iphone" ? "مكالمة فيديو" : "اتصال"} className="phone-icon-button" type="button"><Icon path={deviceStyle === "iphone" ? mdiVideoOutline : mdiPhoneOutline} size={1.02} /></button>
+          {deviceStyle !== "iphone" && <button aria-label="اتصال" className="phone-icon-button" type="button"><Icon path={mdiPhoneOutline} size={1.02} /></button>}
           {deviceStyle !== "iphone" && <button aria-label="المزيد" className="phone-icon-button" type="button"><Icon path={mdiDotsVertical} size={1.02} /></button>}
         </div>
       </header>
@@ -314,17 +348,22 @@ function ConversationPhone({ clockMode, conversation, customTime, deviceStyle, s
           const previousMessage = visibleMessages[index - 1];
           const currentDay = parseXmlTimestamp(message.date) ? new Date(message.date).toDateString() : "missing";
           const previousDay = parseXmlTimestamp(previousMessage?.date) ? new Date(previousMessage.date).toDateString() : "missing";
-          const showDate = index === 0 || currentDay !== previousDay;
+          const timeGap = parseXmlTimestamp(message.date) && parseXmlTimestamp(previousMessage?.date)
+            ? Number(message.date) - Number(previousMessage.date)
+            : 0;
+          const showDate = index === 0
+            || currentDay !== previousDay
+            || (deviceStyle === "iphone" && timeGap >= 10 * 60 * 1000);
           return (
             <div className="thread-message-entry" key={message.id}>
-              {showDate && <div className="date-chip">{formatDate(message.date)}</div>}
+              {showDate && <div className="date-chip">{deviceStyle === "iphone" ? formatIphoneThreadStamp(message.date) : formatDate(message.date)}</div>}
               <button
                 className={`sms-bubble-wrap ${incoming ? "incoming" : "outgoing"} ${selectedId === message.id ? "is-selected" : ""}`}
                 data-message-id={message.id}
                 onClick={() => onSelect(message.id)}
                 type="button"
               >
-                <span className="sms-bubble"><LinkifiedBody body={message.body} /></span>
+                <span className="sms-bubble"><LinkifiedBody body={message.body} deviceStyle={deviceStyle} /></span>
                 <small>{formatTime(message.date)}</small>
               </button>
             </div>
@@ -352,7 +391,7 @@ function EvidencePhone({ clockMode, customTime, deviceStyle = "android", message
       </header>
       <div className="details-content">
         <div className="message-proof-card">
-          <div className="message-proof-bubble"><LinkifiedBody body={message?.body || "اختر رسالة لعرض الدليل"} /></div>
+          <div className="message-proof-bubble"><LinkifiedBody body={message?.body || "اختر رسالة لعرض الدليل"} deviceStyle={deviceStyle} /></div>
         </div>
         <section className="proof-section">
           <h4>الحالة</h4>
