@@ -1021,6 +1021,14 @@ dist/.openai/hosting.json
 
 ## 33. الاستضافة الحالية
 
+مستودع المصدر الخاص على GitHub:
+
+```text
+https://github.com/Taksimpoint/n9-sms-web
+```
+
+الفرع الافتراضي `main`، والمستودع `PRIVATE`، والنسخة المحلية مرتبطة به عبر remote باسم `origin`.
+
 الموقع المنشور:
 
 ```text
