@@ -64,6 +64,8 @@ import {
   quoteCsvCell,
   toIsoTimestamp,
 } from "./dataUtils.js";
+import { buildConversationReferenceRows } from "./conversationExportUtils.js";
+import { StoredZipBuilder } from "./zipUtils.js";
 import {
   buildEvidenceBaseName,
   createJpegPdf,
@@ -691,6 +693,7 @@ const welcomeCopy = {
     unlockDescription: "يتم الآن التحقق من مسار الدخول",
     archiveHint: "مرّر المؤشر أو اضغط على أي ملف لاكتشاف الوظيفة",
     closeLogin: "إغلاق تسجيل الدخول",
+    backToHome: "العودة إلى الواجهة الرئيسية",
     archiveFeatures: [
       { title: "أرشيفات الشركات", text: "كل شركة في مساحة مستقلة ومحفوظة." },
       { title: "المطابقة الذكية", text: "طابق أرقام Excel واختر الرسالة الدقيقة." },
@@ -729,6 +732,7 @@ const welcomeCopy = {
     unlockDescription: "Preparing your protected sign-in path",
     archiveHint: "Hover or select any archive to discover its function",
     closeLogin: "Close sign in",
+    backToHome: "Back to the main screen",
     archiveFeatures: [
       { title: "Company archives", text: "Every company stays in its own protected workspace." },
       { title: "Smart matching", text: "Match Excel identifiers and select the exact message." },
@@ -757,11 +761,11 @@ const welcomeCopy = {
 };
 
 function LoginScreen({ busy, error, onLogin }) {
-  const [username, setUsername] = useState("nasseh");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [language, setLanguage] = useState(() => localStorage.getItem("n9-welcome-language") || "ar");
-  const [welcomeTheme, setWelcomeTheme] = useState(() => localStorage.getItem("n9-welcome-theme-v2") || "dark");
+  const [welcomeTheme, setWelcomeTheme] = useState(() => localStorage.getItem("n9-welcome-theme-v3") || "light");
   const [entryPhase, setEntryPhase] = useState("closed");
   const [activeArchive, setActiveArchive] = useState(null);
   const usernameRef = useRef(null);
@@ -770,7 +774,7 @@ function LoginScreen({ busy, error, onLogin }) {
 
   useEffect(() => {
     localStorage.setItem("n9-welcome-language", language);
-    localStorage.setItem("n9-welcome-theme-v2", welcomeTheme);
+    localStorage.setItem("n9-welcome-theme-v3", welcomeTheme);
     document.documentElement.lang = language;
     document.documentElement.dir = copy.dir;
     return () => {
@@ -873,12 +877,13 @@ function LoginScreen({ busy, error, onLogin }) {
         <section aria-labelledby="welcome-login-title" aria-modal="true" className="login-card welcome-login-panel" role="dialog">
           <button aria-label={copy.closeLogin} className="welcome-login-close" onClick={closeLogin} type="button"><Icon path={mdiClose} size={0.9} /></button>
           <div className="welcome-login-brand"><img alt="N9" src="/n9-logo.jpg" /><span><strong>N9 SMS</strong><small>{copy.brandSubtitle}</small></span></div>
+          <button className="welcome-login-back" onClick={closeLogin} type="button"><Icon path={copy.dir === "rtl" ? mdiChevronRight : mdiChevronLeft} size={0.78} />{copy.backToHome}</button>
           <div className="login-card-top"><span className="login-card-icon"><Icon path={mdiDatabaseLockOutline} size={1.05} /></span><span className="eyebrow">{copy.loginEyebrow}</span></div>
           <div className="login-card-heading"><h2 id="welcome-login-title">{copy.loginTitle}</h2><p>{copy.loginDescription}</p></div>
-          <form onSubmit={submit}>
+          <form autoComplete="off" onSubmit={submit}>
             <label>
               <span>{copy.username}</span>
-              <div className="credential-field"><Icon path={mdiAccount} size={0.82} /><input autoComplete="username" maxLength={30} onChange={(event) => setUsername(event.target.value)} ref={usernameRef} required value={username} /></div>
+              <div className="credential-field"><Icon path={mdiAccount} size={0.82} /><input autoComplete="off" maxLength={30} name="n9-login-user" onChange={(event) => setUsername(event.target.value)} ref={usernameRef} required value={username} /></div>
             </label>
             <label>
               <span>{copy.password}</span>
@@ -1069,6 +1074,31 @@ function buildRecommendedSelections(terms, matches) {
   }));
 }
 
+function ConversationExportProgress({ progress }) {
+  const percent = Math.max(0, Math.min(100, Number(progress?.percent) || 0));
+  return (
+    <div className="dialog-backdrop export-progress-backdrop" role="presentation">
+      <section aria-labelledby="conversation-export-title" aria-modal="true" className="conversation-export-progress" role="dialog">
+        <div className="export-progress-icon"><Icon path={mdiFolderOutline} size={1.15} /></div>
+        <div className="export-progress-heading">
+          <span className="eyebrow">تصدير المحادثة كاملة</span>
+          <h2 id="conversation-export-title">{progress.title}</h2>
+          <p>{progress.stage}</p>
+        </div>
+        <strong className="export-progress-percent">{percent.toLocaleString("ar-SA")}٪</strong>
+        <div aria-label="نسبة إنجاز تصدير المحادثة" aria-valuemax="100" aria-valuemin="0" aria-valuenow={percent} className="export-progress-track" role="progressbar">
+          <span style={{ width: `${percent}%` }} />
+        </div>
+        <div className="export-progress-meta">
+          <span>{progress.completed.toLocaleString("ar-SA")} من {progress.total.toLocaleString("ar-SA")} رسالة</span>
+          <span>PDF + Excel + ZIP</span>
+        </div>
+        <small>لا تغلق الصفحة حتى يكتمل التنزيل. تُحفظ كل رسالة كملف PDF مستقل دون تغيير بياناتها.</small>
+      </section>
+    </div>
+  );
+}
+
 export function App() {
   const [messages, setMessages] = useState([]);
   const [sourceName, setSourceName] = useState("لا يوجد ملف بعد");
@@ -1091,7 +1121,8 @@ export function App() {
   const [candidateLimits, setCandidateLimits] = useState({});
   const [batchSelection, setBatchSelection] = useState({});
   const [exportBusy, setExportBusy] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem("n9-app-theme") || "light");
+  const [conversationExportProgress, setConversationExportProgress] = useState(null);
+  const [theme, setTheme] = useState(() => localStorage.getItem("n9-app-theme-v2") || "light");
   const [deviceStyle, setDeviceStyle] = useState(() => localStorage.getItem("n9-phone-style") || "android");
   const [clockMode, setClockMode] = useState(() => localStorage.getItem("n9-phone-clock-mode") || "message");
   const [customTime, setCustomTime] = useState(() => localStorage.getItem("n9-phone-custom-time") || "09:41");
@@ -1252,7 +1283,7 @@ export function App() {
     localStorage.setItem("n9-phone-style", deviceStyle);
     localStorage.setItem("n9-phone-clock-mode", clockMode);
     localStorage.setItem("n9-phone-custom-time", customTime);
-    localStorage.setItem("n9-app-theme", theme);
+    localStorage.setItem("n9-app-theme-v2", theme);
   }, [clockMode, customTime, deviceStyle, theme]);
 
   useEffect(() => {
@@ -1417,7 +1448,8 @@ export function App() {
 
   async function captureMessageImage(message) {
     setExportingMatch(message);
-    await new Promise((resolve) => window.setTimeout(resolve, 140));
+    await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+    await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
     if (!captureRef.current) throw new Error("capture-unavailable");
     await document.fonts.ready;
     return toPng(captureRef.current, {
@@ -1514,6 +1546,110 @@ export function App() {
     } catch {
       setToast("تعذر إكمال ملفات PDF. جرّب تحديد عدد أقل ثم أعد المحاولة.");
     } finally {
+      setExportingMatch(null);
+      setExportBusy(false);
+    }
+  }
+
+  async function exportConversationPackage() {
+    const conversationMessages = selectedConversation?.messages || [];
+    if (!conversationMessages.length || exportBusy) return;
+
+    const conversationTitle = selectedConversation.contactName || selectedConversation.address || "المحادثة";
+    const safeConversationTitle = sanitizeEvidenceName(conversationTitle) || "conversation";
+    const items = conversationMessages.map((message) => ({ message, term: "" }));
+    const nameWidth = Math.max(3, String(conversationMessages.length).length);
+    const pdfFileNames = buildUniqueEvidenceNames(items, "pdf").map((fileName, index) => (
+      `${String(index + 1).padStart(nameWidth, "0")}-${fileName}`
+    ));
+    const zipWriter = new StoredZipBuilder();
+    const addArchiveEntry = (path, data) => zipWriter.addFile(path, data);
+
+    setExportBusy(true);
+    setConversationExportProgress({
+      percent: 0,
+      completed: 0,
+      total: conversationMessages.length,
+      stage: "جاري تجهيز قائمة الرسائل وأسماء الملفات…",
+      title: conversationTitle,
+    });
+
+    try {
+      for (let index = 0; index < conversationMessages.length; index += 1) {
+        setConversationExportProgress({
+          percent: Math.round((index / conversationMessages.length) * 86),
+          completed: index,
+          total: conversationMessages.length,
+          stage: `إنشاء PDF للرسالة ${(index + 1).toLocaleString("ar-SA")}…`,
+          title: conversationTitle,
+        });
+        const dataUrl = await captureMessageImage(conversationMessages[index]);
+        const jpeg = await imageDataUrlToJpeg(dataUrl, theme === "light" ? "#f7f9fc" : "#171a1d", 0.9);
+        const pdf = createJpegPdf([jpeg]);
+        addArchiveEntry(`PDF/${pdfFileNames[index]}`, new Uint8Array(await pdf.arrayBuffer()));
+        setConversationExportProgress({
+          percent: Math.round(((index + 1) / conversationMessages.length) * 86),
+          completed: index + 1,
+          total: conversationMessages.length,
+          stage: `تم تجهيز ${(index + 1).toLocaleString("ar-SA")} من ${conversationMessages.length.toLocaleString("ar-SA")} ملف PDF`,
+          title: conversationTitle,
+        });
+      }
+
+      setConversationExportProgress({
+        percent: 89,
+        completed: conversationMessages.length,
+        total: conversationMessages.length,
+        stage: "جاري إنشاء ملف Excel المرجعي للمحادثة…",
+        title: conversationTitle,
+      });
+      const XLSX = await import("xlsx");
+      const referenceRows = buildConversationReferenceRows(conversationMessages, {
+        conversationName: conversationTitle,
+        pdfFileNames,
+      });
+      const worksheet = XLSX.utils.json_to_sheet(referenceRows);
+      worksheet["!cols"] = [
+        { wch: 10 }, { wch: 24 }, { wch: 20 }, { wch: 22 }, { wch: 14 },
+        { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 76 }, { wch: 52 },
+        { wch: 42 }, { wch: 18 }, { wch: 30 },
+      ];
+      if (worksheet["!ref"]) worksheet["!autofilter"] = { ref: worksheet["!ref"] };
+      const workbook = XLSX.utils.book_new();
+      workbook.Props = {
+        Title: `N9 SMS - ${conversationTitle}`,
+        Subject: "مرجع كامل للمحادثة وملفات PDF المصدرة",
+        Author: "N9 TOOLS",
+      };
+      workbook.Workbook = { Views: [{ RTL: true }] };
+      XLSX.utils.book_append_sheet(workbook, worksheet, "مرجع المحادثة");
+      const workbookData = XLSX.write(workbook, { bookType: "xlsx", compression: true, type: "array" });
+      const excelFileName = sanitizeEvidenceName(`N9-SMS-${conversationTitle}-مرجع-المحادثة`) + ".xlsx";
+      addArchiveEntry(excelFileName, new Uint8Array(workbookData));
+
+      setConversationExportProgress({
+        percent: 96,
+        completed: conversationMessages.length,
+        total: conversationMessages.length,
+        stage: "جاري إغلاق ملف ZIP وتجميع الفهرس النهائي…",
+        title: conversationTitle,
+      });
+      await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+      const archive = zipWriter.toBlob();
+      setConversationExportProgress({
+        percent: 100,
+        completed: conversationMessages.length,
+        total: conversationMessages.length,
+        stage: "اكتمل التصدير، يبدأ التنزيل الآن.",
+        title: conversationTitle,
+      });
+      downloadBlob(archive, `N9-SMS-${safeConversationTitle}-المحادثة-الكاملة.zip`);
+      await new Promise((resolve) => window.setTimeout(resolve, 450));
+      setToast(`تم تصدير محادثة ${conversationTitle}: ${conversationMessages.length.toLocaleString("ar-SA")} PDF وملف Excel داخل ZIP واحد`);
+    } catch (error) {
+      setToast(error?.message || "تعذر إكمال تصدير المحادثة. أعد المحاولة بعد التأكد من وجود مساحة كافية.");
+    } finally {
+      setConversationExportProgress(null);
       setExportingMatch(null);
       setExportBusy(false);
     }
@@ -1813,6 +1949,7 @@ export function App() {
             </button>
             {currentUser.role === "admin" && <button aria-label="إدارة المستخدمين" className="toolbar-button responsive-account" onClick={openUsersDialog} type="button"><Icon path={mdiAccountMultipleOutline} size={0.8} /></button>}
             <button aria-label="تسجيل الخروج" className="toolbar-button responsive-account" onClick={handleLogout} type="button"><Icon path={mdiLogout} size={0.8} /></button>
+            <button className="toolbar-button compact-action conversation-export-action" disabled={!selectedConversation?.messages.length || exportBusy} onClick={exportConversationPackage} title="تصدير كل رسائل المحادثة كملفات PDF مع مرجع Excel داخل ZIP" type="button"><Icon path={mdiFolderOutline} size={0.82} /><span>المحادثة</span></button>
             <button className="toolbar-button compact-action" disabled={!selectedMessage || exportBusy} onClick={exportCurrentPdf} title="تصدير الرسالة كملف PDF" type="button"><Icon path={mdiFileDocumentOutline} size={0.82} /><span>PDF</span></button>
             <button className="toolbar-button primary" disabled={!selectedMessage || exportBusy} onClick={exportCurrentImage} type="button"><Icon path={mdiCellphoneScreenshot} size={0.82} /> تصدير الصورة</button>
           </div>
@@ -1988,6 +2125,7 @@ export function App() {
       {canCreateManualMessages && composerOpen && <MessageComposerDialog busy={busy} conversations={conversations} onClose={() => { if (!busy) { setComposerOpen(false); setActiveNav("messages"); } }} onCreate={handleCreateManualMessage} selectedAddress={selectedConversation?.address} />}
       {workspaceDialogOpen && <WorkspaceDialog activeId={activeWorkspace?.id} busy={managementBusy} onClose={() => setWorkspaceDialogOpen(false)} onCreate={handleCreateWorkspace} onSelect={handleSelectWorkspace} workspaces={workspaces} />}
       {usersDialogOpen && <UsersDialog currentUser={currentUser} loading={managementBusy} onClose={() => setUsersDialogOpen(false)} onCreate={handleCreateUser} onUpdate={handleUpdateUser} users={users} workspaces={workspaces} />}
+      {conversationExportProgress && <ConversationExportProgress progress={conversationExportProgress} />}
       {toast && <div className="toast" role="status"><Icon path={mdiCheckCircle} size={0.82} />{toast}</div>}
 
       <div className={`export-capture ${deviceStyle === "iphone" ? "iphone-export-capture" : ""}`} aria-hidden="true">

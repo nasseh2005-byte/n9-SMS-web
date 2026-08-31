@@ -587,6 +587,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .export-actions > small { grid-column: 1 / -1; color: #687383; font-size: 7px; line-height: 1.4; text-align: center; }
 
 .dialog-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(20, 27, 38, .42); backdrop-filter: blur(8px); }
+.export-progress-backdrop { z-index: 60; background: rgba(10,18,31,.58); }
+.conversation-export-progress { width: min(500px, 100%); padding: 27px; border: 1px solid #cddbf0; border-radius: 25px; background: rgba(255,255,255,.98); box-shadow: 0 32px 90px rgba(16,24,40,.32); display: grid; grid-template-columns: 52px minmax(0,1fr) auto; align-items: center; gap: 16px; }
+.export-progress-icon { width: 52px; height: 52px; border-radius: 16px; background: #e4efff; color: #1559b8; display: grid; place-items: center; }
+.export-progress-heading { min-width: 0; display: grid; gap: 3px; }
+.export-progress-heading h2 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; }
+.export-progress-heading p { margin: 0; color: #667386; font-size: 9px; line-height: 1.6; }
+.export-progress-percent { color: #0b57d0; font: 800 24px/1 "Segoe UI", sans-serif; direction: ltr; }
+.export-progress-track { grid-column: 1 / -1; height: 11px; overflow: hidden; border-radius: 999px; background: #e8edf5; }
+.export-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#0b57d0,#3b82f6); transition: width .22s ease; }
+.export-progress-meta { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; color: #516074; font-size: 9px; font-weight: 700; }
+.conversation-export-progress > small { grid-column: 1 / -1; padding-top: 13px; border-top: 1px solid #e4e9f0; color: #7b8695; font-size: 8px; line-height: 1.7; }
 .import-dialog { width: min(640px, 100%); background: white; border-radius: 26px; padding: 24px; box-shadow: 0 30px 80px rgba(16,24,40,.28); }
 .import-dialog > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .import-dialog h2 { font-size: 22px; }
@@ -955,6 +966,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .welcome-login-brand > span { display: grid; gap: 2px; }
 .welcome-login-brand strong { font-size: 15px; }
 .welcome-login-brand small { color: #8eadd1; font-size: 8px; }
+.welcome-login-back { min-height: 36px; margin: -4px 0 18px; padding: 0 11px; border: 1px solid rgba(116,179,247,.22); border-radius: 11px; background: rgba(10,42,79,.48); color: #b8d9ff; display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 8px; font-weight: 700; cursor: pointer; }
+.welcome-login-back:hover { border-color: rgba(116,179,247,.48); background: rgba(17,58,103,.7); color: #f2f8ff; }
 .welcome-screen .login-card { box-sizing: border-box; }
 .login-card-top { margin-bottom: 22px; display: flex; align-items: center; gap: 10px; }
 .login-card-icon { width: 39px; height: 39px; border-radius: 13px; background: #0d376c; color: #91c9ff; display: grid; place-items: center; }
@@ -1003,6 +1016,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .welcome-light .welcome-login-panel { border-color: rgba(180,128,30,.45); background: rgba(255,252,246,.97); box-shadow: 0 32px 100px rgba(85,58,12,.24), 0 0 36px rgba(190,134,27,.15); color: #2e2414; }
 .welcome-light .welcome-login-close { border-color: rgba(173,124,32,.25); background: #fff8eb; color: #8e6111; }
 .welcome-light .welcome-login-brand { border-color: rgba(164,118,31,.2); }
+.welcome-light .welcome-login-back { border-color: #e1cda8; background: #fff8ec; color: #865a0d; }
+.welcome-light .welcome-login-back:hover { border-color: #c89a45; background: #f8ead0; color: #614006; }
 .welcome-light .welcome-login-brand small, .welcome-light .login-card-heading p { color: #816c49; }
 .welcome-light .login-card-icon { background: #f4e5c6; color: #996815; }
 .welcome-light .welcome-login-panel label > span { color: #55472f; }
@@ -1216,6 +1231,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .theme-dark .company-empty-state strong { color: #e0e6ee; }
 .theme-dark .empty-state-actions button:last-child { background: #284b78; color: #d7e5ff; }
 .theme-dark .management-dialog { background: #202429; }
+.theme-dark .conversation-export-progress { border-color: #414954; background: rgba(32,36,41,.98); }
+.theme-dark .export-progress-icon { background: #284b78; color: #d7e5ff; }
+.theme-dark .export-progress-heading p, .theme-dark .export-progress-meta { color: #aab3bf; }
+.theme-dark .export-progress-percent { color: #8db8f5; }
+.theme-dark .export-progress-track { background: #303740; }
+.theme-dark .conversation-export-progress > small { border-color: #3b424c; color: #9da6b3; }
 .theme-dark .management-dialog header p { color: #aab3bf; }
 .theme-dark .composer-mode-tabs { background: #191d21; }
 .theme-dark .composer-mode-tabs button { color: #aab3bf; }
@@ -1269,6 +1290,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 }
 
 @media (max-width: 620px) {
+  .conversation-export-progress { padding: 21px; grid-template-columns: 44px minmax(0,1fr) auto; gap: 12px; border-radius: 21px; }
+  .export-progress-icon { width: 44px; height: 44px; border-radius: 14px; }
+  .export-progress-heading h2 { font-size: 14px; }
+  .export-progress-percent { font-size: 19px; }
   .app-shell { display: block; min-height: 100dvh; }
   .side-rail { display: none; }
   .conversation-list { display: flex; right: 0; width: min(340px, calc(100vw - 18px)); }
