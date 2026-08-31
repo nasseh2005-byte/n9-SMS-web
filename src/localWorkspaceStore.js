@@ -1,4 +1,5 @@
 import { loadCurrentArchive, loadWorkspaceArchive, saveWorkspaceArchive } from "./localStore.js";
+import { hasManualMessageChanges } from "./archivePermissions.js";
 
 const DATABASE_NAME = "n9-sms-access-local";
 const DATABASE_VERSION = 1;
@@ -181,6 +182,10 @@ export async function localSaveArchive(workspaceId, messages, sourceName) {
   const user = state.users.find((item) => item.id === state.sessionUserId && item.active);
   const workspace = state.workspaces.find((item) => item.id === workspaceId);
   if (!user || !workspace || (user.role !== "admin" && !(user.workspaceIds || []).includes(workspaceId))) throw new Error("لا تملك صلاحية هذه الشركة.");
+  const previousArchive = await loadWorkspaceArchive(workspaceId);
+  if (user.role !== "admin" && hasManualMessageChanges(previousArchive?.messages, messages)) {
+    throw new Error("منشئ الرسالة متاح للمشرف فقط.");
+  }
   await saveWorkspaceArchive(workspaceId, messages, sourceName);
   workspace.sourceName = sourceName;
   workspace.messageCount = messages.length;

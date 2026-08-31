@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import { del, get, head, issueSignedToken, presignUrl } from "@vercel/blob";
+import { hasManualMessageChanges } from "../src/archivePermissions.js";
 
 const SESSION_COOKIE = "n9_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
@@ -429,7 +430,15 @@ async function createArchiveUpload(sql, user, workspace, request) {
   });
 }
 
-async function completeArchiveUpload(sql, workspace, request) {
+async function readPrivateArchive(archiveKey) {
+  if (!archiveKey) return { messages: [] };
+  const result = await get(archiveKey, { access: "private", useCache: false });
+  if (!result || result.statusCode !== 200 || !result.stream) return { messages: [] };
+  const archive = await new Response(result.stream).json();
+  return Array.isArray(archive?.messages) ? archive : { messages: [] };
+}
+
+async function completeArchiveUpload(sql, user, workspace, request) {
   if (!sameOrigin(request)) return fail("تعذر التحقق من مصدر الطلب.", 403);
   requireBlobStorage();
   const body = await readJson(request);
@@ -457,6 +466,19 @@ async function completeArchiveUpload(sql, workspace, request) {
   if (!Array.isArray(archive?.messages) || archive.messages.length > MAX_MESSAGES) {
     await del(archiveKey).catch(() => {});
     return fail("عدد الرسائل غير صالح أو أكبر من الحد المسموح.");
+  }
+  if (user.role !== "admin") {
+    let previousArchive;
+    try {
+      previousArchive = await readPrivateArchive(workspace.archive_key);
+    } catch {
+      await del(archiveKey).catch(() => {});
+      return fail("تعذر التحقق من صلاحية منشئ الرسالة. لم تتغير النسخة المحفوظة.", 409);
+    }
+    if (hasManualMessageChanges(previousArchive.messages, archive.messages)) {
+      await del(archiveKey).catch(() => {});
+      return fail("منشئ الرسالة متاح للمشرف فقط.", 403);
+    }
   }
   const sourceName = String(archive.sourceName || "أرشيف XML").slice(0, 180);
   const now = Date.now();
@@ -544,7 +566,7 @@ async function workspacesRoute(request, sql, user, path) {
   const action = match[2] || "";
   if (request.method === "GET" && !action) return archiveDescriptor(workspace);
   if (request.method === "POST" && action === "upload-url") return createArchiveUpload(sql, user, workspace, request);
-  if (request.method === "POST" && action === "complete") return completeArchiveUpload(sql, workspace, request);
+  if (request.method === "POST" && action === "complete") return completeArchiveUpload(sql, user, workspace, request);
   return fail("الطريقة غير مدعومة.", 405);
 }
 

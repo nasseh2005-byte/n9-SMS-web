@@ -53,7 +53,7 @@
 
 ## Build Verification
 
-- `npm test`: passed, 33/33 tests.
+- `npm test`: passed, 37/37 tests.
 - `npm run build:vercel`: passed.
 - Final source diff has no whitespace errors.
 

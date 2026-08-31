@@ -2,7 +2,7 @@
 
 ## Final status
 
-- Automated tests: 33/33 passed.
+- Automated tests: 37/37 passed.
 - Sites and Vercel production builds: passed.
 - Browser console after a fresh reload and matching flow: 0 errors.
 - Desktop and 390 px mobile checks: no horizontal overflow.
@@ -57,6 +57,7 @@ Source: `C:\Users\win\Downloads\هاجديه (1).xml`
 
 - Every message remains available in the selected thread; the phone renders explicit 160-message batches with older/newer controls instead of putting tens of thousands of bubbles in the DOM at once.
 - Manually created messages are validated, assigned stable unique ids, and saved to the active company's archive with exact user-entered send and receive/delivery timestamps.
+- The message composer is admin-only: ordinary users do not receive any composer navigation, header, empty-state, or dialog control. Client guards reject direct invocation, while local, Sites, and Vercel archive persistence rejects any non-admin addition, edit, or removal of `sourceKind: "manual"` messages. Existing admin-created messages remain intact during permitted XML imports.
 - Date separators cover the complete conversation, and the header reports the real total message count.
 - Global search keeps the complete result set and renders another 100 results on demand; no result is silently excluded.
 - Imported XML archives are saved in browser IndexedDB during local development. On Vercel they are serialized once, uploaded directly to private Vercel Blob with a short-lived PUT URL, validated server-side, and restored through an authorized short-lived GET URL.

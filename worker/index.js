@@ -42,6 +42,25 @@ function json(data, status = 200, headers = {}) {
 
 function fail(message, status = 400) { return json({ error: message }, status); }
 
+function stableValue(value) {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stableValue(value[key])]));
+}
+
+function manualMessageSignatures(messages) {
+  return (Array.isArray(messages) ? messages : [])
+    .filter((message) => message?.sourceKind === "manual")
+    .map((message) => JSON.stringify(stableValue(message)))
+    .sort();
+}
+
+function hasManualMessageChanges(previousMessages, nextMessages) {
+  const previous = manualMessageSignatures(previousMessages);
+  const next = manualMessageSignatures(nextMessages);
+  return previous.length !== next.length || previous.some((signature, index) => signature !== next[index]);
+}
+
 function bytesToBase64(bytes) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -315,6 +334,15 @@ async function workspacesRoute(request, env, user, path) {
     let body;
     try { body = JSON.parse(raw); } catch { return fail("بيانات الأرشيف غير صالحة."); }
     if (!Array.isArray(body.messages) || body.messages.length > MAX_MESSAGES) return fail("عدد الرسائل غير صالح أو أكبر من الحد المسموح.");
+    if (user.role !== "admin") {
+      let previousArchive = { messages: [] };
+      if (workspace.archive_key) {
+        const previousObject = await env.FILES.get(workspace.archive_key);
+        if (!previousObject) return fail("تعذر التحقق من صلاحية منشئ الرسالة. لم تتغير النسخة المحفوظة.", 409);
+        try { previousArchive = await previousObject.json(); } catch { return fail("تعذر التحقق من صلاحية منشئ الرسالة. لم تتغير النسخة المحفوظة.", 409); }
+      }
+      if (hasManualMessageChanges(previousArchive?.messages, body.messages)) return fail("منشئ الرسالة متاح للمشرف فقط.", 403);
+    }
     const sourceName = String(body.sourceName || "أرشيف XML").slice(0, 180);
     const key = `workspaces/${workspaceId}/archives/${crypto.randomUUID()}.json`;
     await env.FILES.put(key, JSON.stringify({ sourceName, messages: body.messages, savedAt: Date.now(), version: 1 }), {
@@ -375,4 +403,4 @@ export default {
   },
 };
 
-export { createPasswordRecord, derivePassword, handleApi, verifyPassword };
+export { createPasswordRecord, derivePassword, handleApi, hasManualMessageChanges, verifyPassword };

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { access } from "node:fs/promises";
 import test from "node:test";
-import worker, { createPasswordRecord, verifyPassword } from "../worker/index.js";
+import worker, { createPasswordRecord, hasManualMessageChanges, verifyPassword } from "../worker/index.js";
 
 test("hashes the numeric PIN and verifies only the correct value", async () => {
   const record = await createPasswordRecord("2005");
@@ -13,6 +13,12 @@ test("hashes the numeric PIN and verifies only the correct value", async () => {
   };
   assert.equal(await verifyPassword("2005", user), true);
   assert.equal(await verifyPassword("2006", user), false);
+});
+
+test("Sites archive guard detects non-admin changes to manual messages", () => {
+  const manual = { id: "manual-1", body: "admin message", sourceKind: "manual" };
+  assert.equal(hasManualMessageChanges([manual], [manual, { id: "xml-1", sourceKind: "xml" }]), false);
+  assert.equal(hasManualMessageChanges([manual], [{ ...manual, body: "changed" }]), true);
 });
 
 test("serves existing static assets without a fallback", async () => {

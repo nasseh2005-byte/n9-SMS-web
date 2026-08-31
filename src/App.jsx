@@ -1015,6 +1015,7 @@ export function App() {
     () => workspaces.find((workspace) => workspace.id === activeWorkspaceId) || workspaces[0] || null,
     [activeWorkspaceId, workspaces],
   );
+  const canCreateManualMessages = currentUser?.role === "admin";
   const deferredQuery = useDeferredValue(query);
   const deferredCandidateQuery = useDeferredValue(candidateQuery);
   const conversations = useMemo(() => groupMessages(messages), [messages]);
@@ -1269,6 +1270,10 @@ export function App() {
   }
 
   async function handleCreateManualMessage(input) {
+    if (!canCreateManualMessages) {
+      setToast("منشئ الرسالة متاح للمشرف فقط.");
+      return false;
+    }
     if (!activeWorkspace) {
       setToast("أنشئ مساحة شركة أولًا ثم أضف الرسالة داخلها.");
       return false;
@@ -1594,7 +1599,7 @@ export function App() {
         <div className="brand-mark" aria-label="N9 SMS"><Icon path={mdiMessageProcessingOutline} size={1.28} /></div>
         <nav>
           <NavButton active={activeNav === "messages"} icon={mdiMessageTextOutline} label="الرسائل" onClick={() => setActiveNav("messages")} />
-          <NavButton active={composerOpen} icon={mdiMessagePlusOutline} label="منشئ الرسالة" onClick={() => { setActiveNav("composer"); setComposerOpen(true); }} />
+          {canCreateManualMessages && <NavButton active={composerOpen} icon={mdiMessagePlusOutline} label="منشئ الرسالة" onClick={() => { setActiveNav("composer"); setComposerOpen(true); }} />}
           <NavButton active={activeNav === "matches"} icon={mdiTuneVariant} label="المطابقة" onClick={() => { setActiveNav("matches"); setMatchPanelOpen(true); }} />
           <NavButton active={activeNav === "files"} icon={mdiFolderOutline} label="الملفات" onClick={() => { setActiveNav("files"); setImportOpen(true); }} />
           <NavButton active={workspaceDialogOpen} icon={mdiOfficeBuildingOutline} label="الشركات" onClick={() => setWorkspaceDialogOpen(true)} />
@@ -1612,7 +1617,7 @@ export function App() {
           </div>
           <div className="list-header-actions">
             <button aria-label="إغلاق المحادثات" className="icon-button responsive-list-close" onClick={() => setConversationPanelOpen(false)} type="button"><Icon path={mdiClose} size={1.02} /></button>
-            <button aria-label="إنشاء رسالة" className="icon-button" onClick={() => { setActiveNav("composer"); setComposerOpen(true); }} title="منشئ الرسالة" type="button"><Icon path={mdiMessagePlusOutline} size={1.02} /></button>
+            {canCreateManualMessages && <button aria-label="إنشاء رسالة" className="icon-button" onClick={() => { setActiveNav("composer"); setComposerOpen(true); }} title="منشئ الرسالة" type="button"><Icon path={mdiMessagePlusOutline} size={1.02} /></button>}
             <button aria-label="استيراد ملف" className="icon-button accent" onClick={() => setImportOpen(true)} type="button"><Icon path={mdiTrayArrowUp} size={1.02} /></button>
           </div>
         </header>
@@ -1650,8 +1655,8 @@ export function App() {
             <div className="company-empty-state">
               <span><Icon path={mdiOfficeBuildingOutline} size={1.25} /></span>
               <strong>لا توجد رسائل في {activeWorkspace?.name}</strong>
-              <small>ارفع XML أو أنشئ أول رسالة، وسيبقى أرشيف هذه الشركة منفصلًا ومحفوظًا.</small>
-              <div className="empty-state-actions"><button onClick={() => setImportOpen(true)} type="button"><Icon path={mdiTrayArrowUp} size={0.75} /> رفع XML</button><button onClick={() => setComposerOpen(true)} type="button"><Icon path={mdiMessagePlusOutline} size={0.75} /> إنشاء رسالة</button></div>
+              <small>{canCreateManualMessages ? "ارفع XML أو أنشئ أول رسالة، وسيبقى أرشيف هذه الشركة منفصلًا ومحفوظًا." : "ارفع XML لبدء أرشيف هذه الشركة، وسيبقى منفصلًا ومحفوظًا."}</small>
+              <div className="empty-state-actions"><button onClick={() => setImportOpen(true)} type="button"><Icon path={mdiTrayArrowUp} size={0.75} /> رفع XML</button>{canCreateManualMessages && <button onClick={() => { setActiveNav("composer"); setComposerOpen(true); }} type="button"><Icon path={mdiMessagePlusOutline} size={0.75} /> إنشاء رسالة</button>}</div>
             </div>
           )}
           {conversations.slice(0, conversationLimit).map((conversation) => (
@@ -1875,7 +1880,7 @@ export function App() {
       </aside>
 
       {importOpen && <ImportDialog busy={busy} onClose={() => !busy && setImportOpen(false)} onSheet={handleSheetUpload} onXml={handleXmlUpload} />}
-      {composerOpen && <MessageComposerDialog busy={busy} conversations={conversations} onClose={() => { if (!busy) { setComposerOpen(false); setActiveNav("messages"); } }} onCreate={handleCreateManualMessage} selectedAddress={selectedConversation?.address} />}
+      {canCreateManualMessages && composerOpen && <MessageComposerDialog busy={busy} conversations={conversations} onClose={() => { if (!busy) { setComposerOpen(false); setActiveNav("messages"); } }} onCreate={handleCreateManualMessage} selectedAddress={selectedConversation?.address} />}
       {workspaceDialogOpen && <WorkspaceDialog activeId={activeWorkspace?.id} busy={managementBusy} onClose={() => setWorkspaceDialogOpen(false)} onCreate={handleCreateWorkspace} onSelect={handleSelectWorkspace} workspaces={workspaces} />}
       {usersDialogOpen && <UsersDialog currentUser={currentUser} loading={managementBusy} onClose={() => setUsersDialogOpen(false)} onCreate={handleCreateUser} onUpdate={handleUpdateUser} users={users} workspaces={workspaces} />}
       {toast && <div className="toast" role="status"><Icon path={mdiCheckCircle} size={0.82} />{toast}</div>}
