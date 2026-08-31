@@ -81,4 +81,15 @@
 - Result: the header is clear, the first visible message begins below it, links stay inside bubbles, and Android/Huawei markup remains unchanged.
 - Related usability improvement: match candidates now have a compact all/incoming/outgoing filter; filtered empty states retain every identifier and report `0 from total` rather than hiding it.
 
+## 31 August 2026 — Android Evidence Trust And Hierarchy
+
+- User evidence: `tmp/product-audit/04-android-proof-before.png`.
+- Accepted implementation capture: `tmp/product-audit/05-android-proof-after.png`.
+- Focused before/after comparison: `tmp/product-audit/06-android-proof-before-after.png`.
+- The original surface used a tiny status bar, a visually heavy empty card, and disconnected type/sender labels, which made the phone feel synthetic and the evidence hard to scan.
+- The updated surface uses a balanced Android status bar, camera cutout, refined rim, message identity row, readable bubble, icon-led status timeline, two-column metadata, and a provenance card.
+- Imported XML records are explicitly labeled «سجل SMS مستورد»; manually created messages are labeled «رسالة منشأة داخل N9». This improves trust without implying that N9 generated an unmarked native screenshot.
+- The light and dark themes were both captured and inspected. Status icons remain readable in both.
+- The long-message export surface measured `758px` client height and `758px` scroll height inside the 852px phone, confirming no hidden vertical overflow for the tested evidence.
+
 final result: passed

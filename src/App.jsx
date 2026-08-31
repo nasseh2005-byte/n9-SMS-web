@@ -257,9 +257,9 @@ function StatusBar({ clockMode = "message", customTime = "09:41", deviceStyle = 
 
   return (
     <div className="phone-statusbar" dir="ltr">
-      <span>{displayedTime}</span>
+      <span className="status-clock">{displayedTime}</span>
       <span className="device-cutout" aria-hidden="true"><span className="device-cutout-lens" /></span>
-      <div className="phone-status-icons">
+      <div className={`phone-status-icons ${deviceStyle === "iphone" ? "is-ios" : "is-android"}`}>
         {deviceStyle === "iphone" ? (
           <>
             <span className="ios-battery-level">54</span>
@@ -464,8 +464,13 @@ function ConversationPhone({ clockMode, conversation, customTime, deviceStyle, s
   );
 }
 
-function EvidencePhone({ clockMode, customTime, deviceStyle = "android", message, capture = false, theme = "dark" }) {
+function EvidencePhone({ clockMode, customTime, deviceStyle = "android", message, capture = false, sourceName = "", theme = "dark" }) {
   const timeline = getMessageTimeline(message);
+  const incoming = message?.type !== "2";
+  const isManual = message?.sourceKind === "manual";
+  const isSample = sourceName === "بيانات تجريبية";
+  const provenanceTitle = isManual ? "رسالة منشأة داخل N9" : isSample ? "بيانات تجريبية" : "سجل SMS مستورد";
+  const provenanceText = isManual ? "التاريخ أدخله المستخدم" : isSample ? "للعرض فقط وليست من ملف عميل" : "التاريخ محفوظ من ملف المصدر";
   return (
     <div className={`phone-screen details-phone device-${deviceStyle} ${capture ? "capture-version" : ""} ${theme === "light" ? "phone-light" : ""}`} dir="rtl">
       <StatusBar clockMode={clockMode} customTime={customTime} deviceStyle={deviceStyle} value={timeline.statusTime} />
@@ -476,7 +481,16 @@ function EvidencePhone({ clockMode, customTime, deviceStyle = "android", message
       </header>
       <div className="details-content">
         <div className="message-proof-card">
+          <div className="proof-message-header">
+            <span className="proof-sender-avatar">{getInitials(message?.contactName || message?.address || "SMS")}</span>
+            <span className="proof-message-identity">
+              <strong>{message?.contactName === "(Unknown)" ? message?.address : message?.contactName || message?.address || "رسالة SMS"}</strong>
+              <small>{incoming ? "رسالة واردة" : "رسالة صادرة"} · {formatDate(timeline.statusTime)}</small>
+            </span>
+            <span className="proof-format-badge">SMS</span>
+          </div>
           <div className="message-proof-bubble"><LinkifiedBody body={message?.body || "اختر رسالة لعرض الدليل"} deviceStyle={deviceStyle} /></div>
+          <time className="proof-message-time">{formatTime(timeline.statusTime)}</time>
         </div>
         <section className="proof-section">
           <h4>الحالة</h4>
@@ -484,19 +498,25 @@ function EvidencePhone({ clockMode, customTime, deviceStyle = "android", message
             {timeline.rows.map((row) => (
               <div className={`${row.warning ? "has-warning" : ""} ${row.missing ? "is-missing" : ""}`} key={row.label}>
                 <span className="status-label">
+                  <span className="status-marker"><Icon path={row.missing ? mdiAlertCircleOutline : mdiCheckCircle} size={0.72} /></span>
                   <strong>{row.label}</strong>
                 </span>
-                <span>{formatDate(row.at)}، {formatTime(row.at)}</span>
+                <time>{formatDate(row.at)}، {formatTime(row.at)}</time>
               </div>
             ))}
           </div>
         </section>
         <section className="proof-section proof-meta">
-          <h4>النوع</h4>
-          <p>رسالة نصية</p>
-          <h4>المرسل</h4>
-          <p dir="ltr">{message?.address || "—"}</p>
+          <h4>بيانات الرسالة</h4>
+          <div className="proof-meta-grid">
+            <div><span>النوع</span><strong>{incoming ? "SMS واردة" : "SMS صادرة"}</strong></div>
+            <div><span>المرسل</span><strong dir="ltr">{message?.address || "—"}</strong></div>
+          </div>
         </section>
+        <div className="proof-provenance">
+          <span className="proof-provenance-icon"><Icon path={mdiDatabaseLockOutline} size={0.78} /></span>
+          <span><strong>{provenanceTitle}</strong><small>{provenanceText} · N9 TOOLS</small></span>
+        </div>
       </div>
       <div className="android-nav" aria-hidden="true">
         <Icon path={mdiSquareOutline} size={0.64} />
@@ -1691,7 +1711,7 @@ export function App() {
           <div className={`phone-frame frame-${deviceStyle}`}>
             {previewMode === "conversation"
               ? <ConversationPhone clockMode={clockMode} conversation={selectedConversation} customTime={customTime} deviceStyle={deviceStyle} onSelect={(id) => { setSelectedMessageId(id); setPreviewMode("details"); }} selectedId={selectedMessage?.id} theme={theme} />
-              : <EvidencePhone clockMode={clockMode} customTime={customTime} deviceStyle={deviceStyle} message={selectedMessage} theme={theme} />}
+              : <EvidencePhone clockMode={clockMode} customTime={customTime} deviceStyle={deviceStyle} message={selectedMessage} sourceName={sourceName} theme={theme} />}
           </div>
           <div className="stage-footer">
             <span><Icon path={mdiCheck} size={0.72} /> صورة الهاتف لا تعرض أدوات الموقع</span>
@@ -1831,7 +1851,7 @@ export function App() {
       {toast && <div className="toast" role="status"><Icon path={mdiCheckCircle} size={0.82} />{toast}</div>}
 
       <div className="export-capture" aria-hidden="true">
-        <div ref={captureRef}><EvidencePhone capture clockMode={clockMode} customTime={customTime} deviceStyle={deviceStyle} message={exportingMatch || selectedMessage} theme={theme} /></div>
+        <div ref={captureRef}><EvidencePhone capture clockMode={clockMode} customTime={customTime} deviceStyle={deviceStyle} message={exportingMatch || selectedMessage} sourceName={sourceName} theme={theme} /></div>
       </div>
     </main>
   );
