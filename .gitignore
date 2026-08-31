@@ -5,6 +5,9 @@ tmp/
 *.png
 !public/og.png
 !public/n9-hero-light.png
+!public/favicon-256.png
+!public/n9-logo-night-512.png
+!public/n9-logo-pearl-512.png
 .DS_Store
 
 .vercel/

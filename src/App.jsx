@@ -31,7 +31,6 @@ import {
   mdiLogout,
   mdiMagnify,
   mdiMicrophoneOutline,
-  mdiMessageProcessingOutline,
   mdiMessagePlusOutline,
   mdiMessageTextOutline,
   mdiOfficeBuildingOutline,
@@ -775,6 +774,7 @@ function LoginScreen({ busy, error, onLogin }) {
   useEffect(() => {
     localStorage.setItem("n9-welcome-language", language);
     localStorage.setItem("n9-welcome-theme-v3", welcomeTheme);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", welcomeTheme === "dark" ? "#03142c" : "#fbf8f1");
     document.documentElement.lang = language;
     document.documentElement.dir = copy.dir;
     return () => {
@@ -826,7 +826,7 @@ function LoginScreen({ busy, error, onLogin }) {
     <main className={`welcome-screen welcome-${welcomeTheme}`} dir={copy.dir}>
       <header className="welcome-header">
         <div className="welcome-logo">
-          <img alt="N9" className="welcome-logo-image" src="/n9-logo.jpg" />
+          <img alt="N9" className="welcome-logo-image" src={welcomeTheme === "dark" ? "/n9-logo-night-512.png" : "/n9-logo-pearl-512.png"} />
           <span className="welcome-logo-copy"><strong>N9 SMS</strong><small>{copy.brandSubtitle}</small></span>
         </div>
         <div className="welcome-controls">
@@ -876,7 +876,7 @@ function LoginScreen({ busy, error, onLogin }) {
       <div className={`welcome-login-layer ${entryPhase === "open" ? "is-open" : ""}`} onMouseDown={(event) => event.target === event.currentTarget && closeLogin()} role="presentation">
         <section aria-labelledby="welcome-login-title" aria-modal="true" className="login-card welcome-login-panel" role="dialog">
           <button aria-label={copy.closeLogin} className="welcome-login-close" onClick={closeLogin} type="button"><Icon path={mdiClose} size={0.9} /></button>
-          <div className="welcome-login-brand"><img alt="N9" src="/n9-logo.jpg" /><span><strong>N9 SMS</strong><small>{copy.brandSubtitle}</small></span></div>
+          <div className="welcome-login-brand"><img alt="N9" src={welcomeTheme === "dark" ? "/n9-logo-night-512.png" : "/n9-logo-pearl-512.png"} /><span><strong>N9 SMS</strong><small>{copy.brandSubtitle}</small></span></div>
           <button className="welcome-login-back" onClick={closeLogin} type="button"><Icon path={copy.dir === "rtl" ? mdiChevronRight : mdiChevronLeft} size={0.78} />{copy.backToHome}</button>
           <div className="login-card-top"><span className="login-card-icon"><Icon path={mdiDatabaseLockOutline} size={1.05} /></span><span className="eyebrow">{copy.loginEyebrow}</span></div>
           <div className="login-card-heading"><h2 id="welcome-login-title">{copy.loginTitle}</h2><p>{copy.loginDescription}</p></div>
@@ -1284,6 +1284,7 @@ export function App() {
     localStorage.setItem("n9-phone-clock-mode", clockMode);
     localStorage.setItem("n9-phone-custom-time", customTime);
     localStorage.setItem("n9-app-theme-v2", theme);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#03142c" : "#fbf8f1");
   }, [clockMode, customTime, deviceStyle, theme]);
 
   useEffect(() => {
@@ -1837,7 +1838,7 @@ export function App() {
   return (
     <main className={`app-shell theme-${theme}`} dir="rtl">
       <aside className="side-rail" aria-label="التنقل الرئيسي">
-        <div className="brand-mark" aria-label="N9 SMS"><Icon path={mdiMessageProcessingOutline} size={1.28} /></div>
+        <div className="brand-mark" aria-label="N9 SMS"><img alt="" src={theme === "dark" ? "/n9-logo-night-512.png" : "/n9-logo-pearl-512.png"} /></div>
         <nav>
           <NavButton active={activeNav === "messages"} icon={mdiMessageTextOutline} label="الرسائل" onClick={() => setActiveNav("messages")} />
           {canCreateManualMessages && <NavButton active={composerOpen} icon={mdiMessagePlusOutline} label="منشئ الرسالة" onClick={() => { setActiveNav("composer"); setComposerOpen(true); }} />}
