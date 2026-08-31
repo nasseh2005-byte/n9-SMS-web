@@ -17,6 +17,8 @@ import {
   mdiDatabaseLockOutline,
   mdiDotsVertical,
   mdiDownload,
+  mdiEyeOffOutline,
+  mdiEyeOutline,
   mdiFileDocumentOutline,
   mdiFileExcelOutline,
   mdiFileTableOutline,
@@ -676,46 +678,56 @@ function MessageComposerDialog({ busy, conversations, onClose, onCreate, selecte
 const welcomeCopy = {
   ar: {
     dir: "rtl",
-    eyebrow: "منصة N9 لتوثيق رسائل الشركات",
-    title: "من ملف الرسائل إلى دليل احترافي جاهز للتسليم.",
-    description: "ارفع أرشيف XML وقائمة أرقام Excel؛ يرتّب N9 المحادثات ويطابق الأرقام لتختار الرسالة الصحيحة وتصدرها فورًا بصورة هاتف واضحة تحفظ المرسل والنص والتاريخ.",
-    start: "ابدأ الآن",
-    workspaces: "فصل كامل للشركات",
-    workspacesText: "أرشيف وصلاحيات ونتائج مستقلة لكل شركة.",
-    phones: "ثيمات هواتف متعددة",
-    phonesText: "Google Messages وHuawei وiPhone في معاينة واحدة.",
-    evidence: "دليل منظم",
-    evidenceText: "التاريخ والمرسل ومحتوى الرسالة دون تغيير بيانات XML.",
-    loginEyebrow: "دخول المستخدمين",
-    loginTitle: "افتح مساحة عملك",
-    loginDescription: "ستظهر فقط الشركات المفوض لك الوصول إليها.",
+    brandSubtitle: "مساحة أدلة الرسائل",
+    eyebrow: "إدارة أرشيفات SMS للشركات",
+    title: "من الأرشيف إلى الدليل، بخطوات واضحة.",
+    description: "ارفع XML، طابق أرقام Excel، راجع الرسالة المطلوبة ثم صدّرها بصورة هاتف أو PDF مع الحفاظ على بياناتها الأصلية.",
+    start: "الانتقال إلى تسجيل الدخول",
+    flowLabel: "طريقة العمل",
+    importStep: "ارفع الأرشيف",
+    importStepText: "استورد XML داخل مساحة الشركة الصحيحة.",
+    matchStep: "طابق واختر",
+    matchStepText: "ابحث برقم واحد أو قائمة Excel واعتمد الرسالة المناسبة.",
+    exportStep: "راجع وصدّر",
+    exportStepText: "اختر شكل الهاتف ونزّل PNG أو PDF أو ZIP.",
+    formats: "XML  ·  Excel / CSV  ·  PNG / PDF / ZIP",
+    loginEyebrow: "بوابة المستخدمين",
+    loginTitle: "الدخول إلى مساحة العمل",
+    loginDescription: "استخدم بيانات حسابك للوصول إلى الشركات المفوضة لك فقط.",
     username: "اسم المستخدم",
     password: "كلمة المرور الرقمية",
-    login: "دخول آمن",
+    login: "تسجيل الدخول",
     checking: "جاري التحقق…",
-    secure: "الجلسة محمية، وتُقفل المحاولات الخاطئة المتكررة مؤقتًا.",
+    secure: "دخول محمي وصلاحيات منفصلة لكل شركة.",
+    showPassword: "إظهار كلمة المرور",
+    hidePassword: "إخفاء كلمة المرور",
     preview: "معاينة محلية — المشاركة بين الأجهزة تعمل في النسخة المنشورة.",
   },
   en: {
     dir: "ltr",
-    eyebrow: "N9 SMS evidence platform",
-    title: "Turn SMS archives into professional, delivery-ready evidence.",
-    description: "Upload an XML archive and an Excel identifier list. N9 organizes conversations, matches the right messages, and exports a clear phone capture while preserving the sender, content, and timestamps.",
-    start: "Get started",
-    workspaces: "Isolated companies",
-    workspacesText: "Separate archives, permissions, and results for every company.",
-    phones: "Multiple phone styles",
-    phonesText: "Google Messages, Huawei, and iPhone previews in one place.",
-    evidence: "Structured evidence",
-    evidenceText: "Preserve XML sender, message content, and timestamps exactly.",
-    loginEyebrow: "User access",
-    loginTitle: "Open your workspace",
-    loginDescription: "You will only see companies assigned to your account.",
+    brandSubtitle: "SMS evidence workspace",
+    eyebrow: "Company SMS archive management",
+    title: "From archive to evidence, in a clear workflow.",
+    description: "Upload XML, match Excel identifiers, review the exact message, then export a phone capture or PDF while preserving the original data.",
+    start: "Go to sign in",
+    flowLabel: "How it works",
+    importStep: "Upload the archive",
+    importStepText: "Import XML into the correct company workspace.",
+    matchStep: "Match and select",
+    matchStepText: "Search one identifier or an Excel list and approve the right message.",
+    exportStep: "Review and export",
+    exportStepText: "Choose a phone style and download PNG, PDF, or ZIP.",
+    formats: "XML  ·  Excel / CSV  ·  PNG / PDF / ZIP",
+    loginEyebrow: "User portal",
+    loginTitle: "Sign in to your workspace",
+    loginDescription: "Use your account to access only the companies assigned to you.",
     username: "Username",
     password: "Numeric password",
-    login: "Secure sign in",
+    login: "Sign in",
     checking: "Checking…",
-    secure: "Your session is protected, with temporary lockout after repeated failed attempts.",
+    secure: "Protected access with separate permissions for every company.",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     preview: "Local preview — cross-device access works on the published site.",
   },
 };
@@ -723,6 +735,7 @@ const welcomeCopy = {
 function LoginScreen({ busy, error, onLogin }) {
   const [username, setUsername] = useState("nasseh");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [language, setLanguage] = useState(() => localStorage.getItem("n9-welcome-language") || "ar");
   const [welcomeTheme, setWelcomeTheme] = useState(() => localStorage.getItem("n9-welcome-theme") || "light");
   const usernameRef = useRef(null);
@@ -747,7 +760,10 @@ function LoginScreen({ busy, error, onLogin }) {
   return (
     <main className={`welcome-screen welcome-${welcomeTheme}`} dir={copy.dir}>
       <header className="welcome-header">
-        <div className="welcome-logo"><span><Icon path={mdiMessageProcessingOutline} size={1.1} /></span><strong>N9 SMS</strong></div>
+        <div className="welcome-logo">
+          <span className="welcome-logo-mark"><Icon path={mdiMessageProcessingOutline} size={1.1} /></span>
+          <span className="welcome-logo-copy"><strong>N9 SMS</strong><small>{copy.brandSubtitle}</small></span>
+        </div>
         <div className="welcome-controls">
           <div className="language-switch" aria-label="Language">
             <button className={language === "ar" ? "is-active" : ""} onClick={() => setLanguage("ar")} type="button">العربية</button>
@@ -761,23 +777,27 @@ function LoginScreen({ busy, error, onLogin }) {
           <div className="welcome-product-mark"><Icon path={mdiShieldAccountOutline} size={0.8} /><span>{copy.eyebrow}</span></div>
           <h1>{copy.title}</h1>
           <p>{copy.description}</p>
-          <button className="welcome-primary-action" onClick={() => usernameRef.current?.focus()} type="button">{copy.start}<Icon path={mdiChevronRight} size={0.82} /></button>
-          <div className="welcome-features">
-            <article><span><Icon path={mdiOfficeBuildingOutline} size={0.95} /></span><div><strong>{copy.workspaces}</strong><small>{copy.workspacesText}</small></div></article>
-            <article><span><Icon path={mdiCellphoneScreenshot} size={0.95} /></span><div><strong>{copy.phones}</strong><small>{copy.phonesText}</small></div></article>
-            <article><span><Icon path={mdiCheckCircle} size={0.95} /></span><div><strong>{copy.evidence}</strong><small>{copy.evidenceText}</small></div></article>
+          <div className="welcome-actions">
+            <button className="welcome-primary-action" onClick={() => usernameRef.current?.focus()} type="button">{copy.start}<Icon path={mdiChevronRight} size={0.82} /></button>
+            <span className="welcome-formats">{copy.formats}</span>
+          </div>
+          <div className="welcome-flow" aria-label={copy.flowLabel}>
+            <article><span className="welcome-step-icon"><Icon path={mdiFileDocumentOutline} size={0.88} /></span><div><small>01</small><strong>{copy.importStep}</strong><p>{copy.importStepText}</p></div></article>
+            <article><span className="welcome-step-icon"><Icon path={mdiMagnify} size={0.88} /></span><div><small>02</small><strong>{copy.matchStep}</strong><p>{copy.matchStepText}</p></div></article>
+            <article><span className="welcome-step-icon"><Icon path={mdiImageMultipleOutline} size={0.88} /></span><div><small>03</small><strong>{copy.exportStep}</strong><p>{copy.exportStepText}</p></div></article>
           </div>
         </section>
         <section className="login-card">
-          <div className="login-card-heading"><span className="eyebrow">{copy.loginEyebrow}</span><h2>{copy.loginTitle}</h2><p>{copy.loginDescription}</p></div>
+          <div className="login-card-top"><span className="login-card-icon"><Icon path={mdiDatabaseLockOutline} size={1.05} /></span><span className="eyebrow">{copy.loginEyebrow}</span></div>
+          <div className="login-card-heading"><h2>{copy.loginTitle}</h2><p>{copy.loginDescription}</p></div>
           <form onSubmit={submit}>
             <label>
               <span>{copy.username}</span>
-              <input autoComplete="username" maxLength={30} onChange={(event) => setUsername(event.target.value)} ref={usernameRef} required value={username} />
+              <div className="credential-field"><Icon path={mdiAccount} size={0.82} /><input autoComplete="username" maxLength={30} onChange={(event) => setUsername(event.target.value)} ref={usernameRef} required value={username} /></div>
             </label>
             <label>
               <span>{copy.password}</span>
-              <div className="pin-field"><Icon path={mdiLockOutline} size={0.82} /><input autoComplete="current-password" inputMode="numeric" maxLength={12} minLength={4} onChange={(event) => setPassword(event.target.value.replace(/\D/g, ""))} pattern="[0-9]{4,12}" placeholder="••••" required type="password" value={password} /></div>
+              <div className="pin-field"><Icon path={mdiLockOutline} size={0.82} /><input autoComplete="current-password" inputMode="numeric" maxLength={12} minLength={4} onChange={(event) => setPassword(event.target.value.replace(/\D/g, ""))} pattern="[0-9]{4,12}" placeholder="••••" required type={showPassword ? "text" : "password"} value={password} /><button aria-label={showPassword ? copy.hidePassword : copy.showPassword} onClick={() => setShowPassword((current) => !current)} type="button"><Icon path={showPassword ? mdiEyeOffOutline : mdiEyeOutline} size={0.78} /></button></div>
             </label>
             {error && <div className="login-error" role="alert"><Icon path={mdiAlertCircleOutline} size={0.8} />{error}</div>}
             <button disabled={busy} type="submit">{busy ? <><span className="spinner" /> {copy.checking}</> : copy.login}</button>

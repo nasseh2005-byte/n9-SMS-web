@@ -20,6 +20,7 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 - The first administrator is `nasseh` with the requested numeric bootstrap password; additional users receive explicit company assignments.
 - Preserve the existing Google Messages-inspired visual language while extending it with company and user-management surfaces.
 - The pre-login experience is a polished bilingual Arabic/English landing and sign-in surface with its own light/dark presentation.
+- Keep the pre-login experience practical rather than generically promotional: explain the XML → match → review/export workflow, keep sign-in prominent, and switch to a single-column layout before the hero or login card becomes cramped on medium-width screens.
 - Phone evidence supports three explicitly selectable visual systems: Google Android, Huawei EMUI, and Apple iPhone.
 - Search inside an open conversation accepts arbitrary message text, sender/contact names, and numbers without changing the global archive search, matching state, or XML data.
 - Large archives must remain responsive without hiding data: the phone renders message batches of 160 with explicit older/newer controls, conversation lists render in batches of 200, match groups in batches of 40, and candidates in batches of 80. Search and matching still operate over the complete archive; never replace batching with a hard result cutoff.
