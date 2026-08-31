@@ -679,9 +679,10 @@ const welcomeCopy = {
   ar: {
     dir: "rtl",
     brandSubtitle: "مساحة أدلة الرسائل",
-    eyebrow: "إدارة أرشيفات SMS للشركات",
-    title: "من الأرشيف إلى الدليل، بخطوات واضحة.",
-    description: "ارفع XML، طابق أرقام Excel، راجع الرسالة المطلوبة ثم صدّرها بصورة هاتف أو PDF مع الحفاظ على بياناتها الأصلية.",
+    eyebrow: "أرشيف رقمي آمن للشركات",
+    heroAlt: "N9 SMS — مساحة آمنة لأرشيفات وأدلة الرسائل",
+    title: "مساحة آمنة لرفع الرسائل، مطابقتها، وتصديرها.",
+    description: "أدر أرشيفات الشركات من مكان واحد، مع الحفاظ على الرسالة الأصلية وبياناتها أثناء البحث والمراجعة والتصدير.",
     start: "الانتقال إلى تسجيل الدخول",
     flowLabel: "طريقة العمل",
     importStep: "ارفع الأرشيف",
@@ -706,9 +707,10 @@ const welcomeCopy = {
   en: {
     dir: "ltr",
     brandSubtitle: "SMS evidence workspace",
-    eyebrow: "Company SMS archive management",
-    title: "From archive to evidence, in a clear workflow.",
-    description: "Upload XML, match Excel identifiers, review the exact message, then export a phone capture or PDF while preserving the original data.",
+    eyebrow: "Secure digital archive for companies",
+    heroAlt: "N9 SMS — secure SMS archive and evidence workspace",
+    title: "Upload, match, and export in one secure workspace.",
+    description: "Manage company archives in one place while preserving every original message and its data through search, review, and export.",
     start: "Go to sign in",
     flowLabel: "How it works",
     importStep: "Upload the archive",
@@ -737,13 +739,13 @@ function LoginScreen({ busy, error, onLogin }) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [language, setLanguage] = useState(() => localStorage.getItem("n9-welcome-language") || "ar");
-  const [welcomeTheme, setWelcomeTheme] = useState(() => localStorage.getItem("n9-welcome-theme") || "light");
+  const [welcomeTheme, setWelcomeTheme] = useState(() => localStorage.getItem("n9-welcome-theme-v2") || "dark");
   const usernameRef = useRef(null);
   const copy = welcomeCopy[language];
 
   useEffect(() => {
     localStorage.setItem("n9-welcome-language", language);
-    localStorage.setItem("n9-welcome-theme", welcomeTheme);
+    localStorage.setItem("n9-welcome-theme-v2", welcomeTheme);
     document.documentElement.lang = language;
     document.documentElement.dir = copy.dir;
     return () => {
@@ -775,6 +777,7 @@ function LoginScreen({ busy, error, onLogin }) {
       <div className="welcome-layout">
         <section className="welcome-copy">
           <div className="welcome-product-mark"><Icon path={mdiShieldAccountOutline} size={0.8} /><span>{copy.eyebrow}</span></div>
+          <div className="welcome-hero-media"><img alt={copy.heroAlt} src="/og.png" /></div>
           <h1>{copy.title}</h1>
           <p>{copy.description}</p>
           <div className="welcome-actions">

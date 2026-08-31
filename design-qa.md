@@ -66,6 +66,61 @@ final result: passed
 
 ---
 
+# N9 SMS Design QA — Secure Digital Archive Landing
+
+## Comparison Target
+
+- Source visual truth: `C:\Users\win\AppData\Local\Temp\codex-clipboard-0a518975-95a0-4dc5-9a98-d62dd19fb815.png` (1731 × 909 px).
+- Repository source asset: `public/og.png`; its SHA-256 hash matches the supplied source image exactly.
+- Final desktop capture: `tmp/product-design/landing-secure-archive-desktop-viewport.png` (1425 × 891 px from a 1440 × 900 browser viewport).
+- Final mobile capture: `tmp/product-design/landing-secure-archive-mobile-viewport.png` (390 × 845 px from a 390 × 844 browser viewport).
+- Same-input visual comparison: `tmp/product-design/landing-reference-vs-final.png` (source on the left, implementation on the right).
+- Verified state: signed out, Arabic/RTL, dark theme, local preview at `http://127.0.0.1:4174/`.
+
+## Artistic Direction
+
+- Direction: Secure Digital Archive / أرشيف رقمي آمن.
+- The source's deep navy canvas, electric-blue archive trays, restrained teal trust accent, and shield/folder imagery define the landing palette and mood.
+- The original raster artwork is displayed intact with `object-fit: contain`; its embedded N9 SMS wordmark, folders, shields, and text are not recreated as CSS or cropped.
+- The product UI extends that language through flat navy institutional surfaces, thin blue borders, one teal process accent, and high-contrast white Arabic type.
+
+## Comparison History
+
+### Pass 1
+
+- [P1] The previous landing used a bright generic gradient and did not visually communicate a protected SMS archive.
+- [P1] The reference illustration was absent, so the landing did not share the source's recognizable N9 identity.
+- Fix: made dark mode the new first-visit default, placed the exact supplied artwork as the dominant hero, and aligned the login card, process row, controls, borders, and actions to the navy/blue/teal system.
+
+### Pass 2
+
+- [P2] The existing tablet/mobile heading overrides would have enlarged the supporting HTML headline beyond the reference-led hierarchy.
+- Fix: reduced responsive type sizes, preserved the login-first mobile sequence, and gave the complete hero artwork a contained 18 px mobile frame.
+- Final comparison confirms the source palette, artwork, institutional depth, and security/archive cues remain visibly consistent. No actionable P0, P1, or P2 difference remains; the added login and workflow copy are intentional functional product surfaces.
+
+## Required Fidelity Surfaces
+
+- Typography: bundled Noto Sans Arabic keeps the Arabic copy readable and balanced while the supplied artwork retains its original English wordmark.
+- Spacing and hierarchy: desktop shows the complete hero and login card together; mobile shows the login first, then the complete artwork and supporting workflow.
+- Colors: dark navy is the default exterior state, electric blue is reserved for controls and borders, and teal appears only as the secondary trust/process accent.
+- Imagery: `public/og.png` is used directly at its natural aspect ratio with no generated replacement, div art, SVG tracing, or stretch distortion.
+- Responsiveness: measured document width stayed within the mobile viewport; no horizontal product overflow was observed at 390 px.
+
+## Interaction And Runtime Verification
+
+- Arabic and English switches update document language, direction, hero copy, and login copy.
+- Light/dark switch updates the complete welcome surface; the verified final state was returned to Arabic dark.
+- Password visibility toggles from password to text and back without submitting the form.
+- The primary landing CTA focuses the username field, preserving the sign-in journey.
+- Fresh-page browser console check returned zero errors. One earlier hot-reload import error remained only in the historical tab log; a clean new page load confirmed it is not present in the current build.
+- `npm test`: passed, 37/37 tests.
+- `npm run build:vercel`: passed.
+- `npm run test:sites`: passed, 6/6 tests.
+
+final result: passed
+
+---
+
 # N9 SMS Design QA — iPhone Single-Message Evidence
 
 ## Comparison Target
