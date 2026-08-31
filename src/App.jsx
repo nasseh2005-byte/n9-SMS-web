@@ -23,9 +23,11 @@ import {
   mdiFileExcelOutline,
   mdiFileTableOutline,
   mdiFolderOutline,
+  mdiFolderLockOutline,
   mdiImageMultipleOutline,
   mdiInformationOutline,
   mdiLockOutline,
+  mdiLockOpenVariantOutline,
   mdiLogout,
   mdiMagnify,
   mdiMicrophoneOutline,
@@ -684,6 +686,16 @@ const welcomeCopy = {
     title: "مساحة آمنة لرفع الرسائل، مطابقتها، وتصديرها.",
     description: "أدر أرشيفات الشركات من مكان واحد، مع الحفاظ على الرسالة الأصلية وبياناتها أثناء البحث والمراجعة والتصدير.",
     start: "الانتقال إلى تسجيل الدخول",
+    headerLogin: "تسجيل الدخول",
+    unlockTitle: "جاري فتح البوابة الآمنة",
+    unlockDescription: "يتم الآن التحقق من مسار الدخول",
+    archiveHint: "مرّر المؤشر أو اضغط على أي ملف لاكتشاف الوظيفة",
+    closeLogin: "إغلاق تسجيل الدخول",
+    archiveFeatures: [
+      { title: "أرشيفات الشركات", text: "كل شركة في مساحة مستقلة ومحفوظة." },
+      { title: "المطابقة الذكية", text: "طابق أرقام Excel واختر الرسالة الدقيقة." },
+      { title: "التصدير الموثوق", text: "صدّر الأدلة كصور أو PDF أو ZIP." },
+    ],
     flowLabel: "طريقة العمل",
     importStep: "ارفع الأرشيف",
     importStepText: "استورد XML داخل مساحة الشركة الصحيحة.",
@@ -712,6 +724,16 @@ const welcomeCopy = {
     title: "Upload, match, and export in one secure workspace.",
     description: "Manage company archives in one place while preserving every original message and its data through search, review, and export.",
     start: "Go to sign in",
+    headerLogin: "Sign in",
+    unlockTitle: "Opening the secure gateway",
+    unlockDescription: "Preparing your protected sign-in path",
+    archiveHint: "Hover or select any archive to discover its function",
+    closeLogin: "Close sign in",
+    archiveFeatures: [
+      { title: "Company archives", text: "Every company stays in its own protected workspace." },
+      { title: "Smart matching", text: "Match Excel identifiers and select the exact message." },
+      { title: "Trusted export", text: "Export evidence as images, PDF, or ZIP." },
+    ],
     flowLabel: "How it works",
     importStep: "Upload the archive",
     importStepText: "Import XML into the correct company workspace.",
@@ -740,7 +762,10 @@ function LoginScreen({ busy, error, onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [language, setLanguage] = useState(() => localStorage.getItem("n9-welcome-language") || "ar");
   const [welcomeTheme, setWelcomeTheme] = useState(() => localStorage.getItem("n9-welcome-theme-v2") || "dark");
+  const [entryPhase, setEntryPhase] = useState("closed");
+  const [activeArchive, setActiveArchive] = useState(null);
   const usernameRef = useRef(null);
+  const unlockTimerRef = useRef(null);
   const copy = welcomeCopy[language];
 
   useEffect(() => {
@@ -754,6 +779,40 @@ function LoginScreen({ busy, error, onLogin }) {
     };
   }, [copy.dir, language, welcomeTheme]);
 
+  useEffect(() => {
+    if (entryPhase !== "open") return undefined;
+    const focusTimer = window.setTimeout(() => usernameRef.current?.focus(), 620);
+    return () => window.clearTimeout(focusTimer);
+  }, [entryPhase]);
+
+  useEffect(() => {
+    function closeOnEscape(event) {
+      if (event.key === "Escape" && entryPhase === "open") setEntryPhase("closed");
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [entryPhase]);
+
+  useEffect(() => () => {
+    if (unlockTimerRef.current) window.clearTimeout(unlockTimerRef.current);
+  }, []);
+
+  function openLogin() {
+    if (entryPhase === "open") {
+      usernameRef.current?.focus();
+      return;
+    }
+    if (unlockTimerRef.current) window.clearTimeout(unlockTimerRef.current);
+    setEntryPhase("unlocking");
+    unlockTimerRef.current = window.setTimeout(() => setEntryPhase("open"), 900);
+  }
+
+  function closeLogin() {
+    if (unlockTimerRef.current) window.clearTimeout(unlockTimerRef.current);
+    setShowPassword(false);
+    setEntryPhase("closed");
+  }
+
   function submit(event) {
     event.preventDefault();
     onLogin(username, password);
@@ -763,7 +822,7 @@ function LoginScreen({ busy, error, onLogin }) {
     <main className={`welcome-screen welcome-${welcomeTheme}`} dir={copy.dir}>
       <header className="welcome-header">
         <div className="welcome-logo">
-          <span className="welcome-logo-mark"><Icon path={mdiMessageProcessingOutline} size={1.1} /></span>
+          <img alt="N9" className="welcome-logo-image" src="/n9-logo.jpg" />
           <span className="welcome-logo-copy"><strong>N9 SMS</strong><small>{copy.brandSubtitle}</small></span>
         </div>
         <div className="welcome-controls">
@@ -772,27 +831,50 @@ function LoginScreen({ busy, error, onLogin }) {
             <button className={language === "en" ? "is-active" : ""} onClick={() => setLanguage("en")} type="button">English</button>
           </div>
           <button aria-label={welcomeTheme === "dark" ? "Light theme" : "Dark theme"} className="welcome-theme-toggle" onClick={() => setWelcomeTheme((current) => current === "dark" ? "light" : "dark")} type="button"><Icon path={welcomeTheme === "dark" ? mdiWhiteBalanceSunny : mdiWeatherNight} size={0.82} /></button>
+          <button aria-expanded={entryPhase === "open"} className="welcome-header-login" onClick={openLogin} type="button"><Icon path={mdiLockOutline} size={0.76} /><span>{copy.headerLogin}</span></button>
         </div>
       </header>
-      <div className="welcome-layout">
-        <section className="welcome-copy">
-          <div className="welcome-product-mark"><Icon path={mdiShieldAccountOutline} size={0.8} /><span>{copy.eyebrow}</span></div>
-          <div className="welcome-hero-media"><img alt={copy.heroAlt} src="/og.png" /></div>
-          <h1>{copy.title}</h1>
-          <p>{copy.description}</p>
-          <div className="welcome-actions">
-            <button className="welcome-primary-action" onClick={() => usernameRef.current?.focus()} type="button">{copy.start}<Icon path={mdiChevronRight} size={0.82} /></button>
-            <span className="welcome-formats">{copy.formats}</span>
+      <section className="welcome-hero-stage" aria-label={copy.eyebrow}>
+        <div className="welcome-hero-frame">
+          <img alt={copy.heroAlt} className={`welcome-hero-image welcome-hero-dark-image ${welcomeTheme === "dark" ? "is-visible" : ""}`} src="/og.png" />
+          <img alt="" aria-hidden="true" className={`welcome-hero-image welcome-hero-light-image ${welcomeTheme === "light" ? "is-visible" : ""}`} src="/n9-hero-light.png" />
+          <div className="archive-hotspots" aria-label={copy.archiveHint}>
+            {copy.archiveFeatures.map((feature, index) => (
+              <button aria-pressed={activeArchive === index} className={`archive-hotspot archive-hotspot-${index + 1} ${activeArchive === index ? "is-active" : ""}`} key={feature.title} onClick={() => setActiveArchive((current) => current === index ? null : index)} type="button">
+                <span className="archive-hotspot-focus"><Icon path={index === 0 ? mdiFolderLockOutline : index === 1 ? mdiMagnify : mdiImageMultipleOutline} size={0.9} /></span>
+                <span className="archive-hotspot-card"><strong>{feature.title}</strong><small>{feature.text}</small></span>
+              </button>
+            ))}
           </div>
-          <div className="welcome-flow" aria-label={copy.flowLabel}>
-            <article><span className="welcome-step-icon"><Icon path={mdiFileDocumentOutline} size={0.88} /></span><div><small>01</small><strong>{copy.importStep}</strong><p>{copy.importStepText}</p></div></article>
-            <article><span className="welcome-step-icon"><Icon path={mdiMagnify} size={0.88} /></span><div><small>02</small><strong>{copy.matchStep}</strong><p>{copy.matchStepText}</p></div></article>
-            <article><span className="welcome-step-icon"><Icon path={mdiImageMultipleOutline} size={0.88} /></span><div><small>03</small><strong>{copy.exportStep}</strong><p>{copy.exportStepText}</p></div></article>
+          <div className="welcome-hero-entry">
+            <button aria-expanded={entryPhase === "open"} className="welcome-primary-action" onClick={openLogin} type="button"><Icon path={mdiLockOutline} size={0.8} /><span>{copy.start}</span><Icon path={mdiChevronRight} size={0.82} /></button>
+            <span className="welcome-archive-hint"><Icon path={mdiFolderOutline} size={0.72} />{copy.archiveHint}</span>
           </div>
-        </section>
-        <section className="login-card">
+        </div>
+      </section>
+
+      <div className="welcome-mobile-dock">
+        <div className="welcome-mobile-files">
+          {copy.archiveFeatures.map((feature, index) => <button className={activeArchive === index ? "is-active" : ""} key={feature.title} onClick={() => setActiveArchive(index)} type="button"><Icon path={index === 0 ? mdiFolderLockOutline : index === 1 ? mdiMagnify : mdiImageMultipleOutline} size={0.78} /><span>{feature.title}</span></button>)}
+        </div>
+        {activeArchive !== null && <div className="welcome-mobile-detail"><strong>{copy.archiveFeatures[activeArchive].title}</strong><small>{copy.archiveFeatures[activeArchive].text}</small></div>}
+        <button className="welcome-mobile-login" onClick={openLogin} type="button"><Icon path={mdiLockOutline} size={0.8} />{copy.start}</button>
+      </div>
+
+      {entryPhase === "unlocking" && (
+        <div aria-live="polite" className="welcome-unlock-layer" role="status">
+          <span className="welcome-unlock-mark"><Icon className="unlock-closed" path={mdiLockOutline} size={1.65} /><Icon className="unlock-open" path={mdiLockOpenVariantOutline} size={1.65} /></span>
+          <strong>{copy.unlockTitle}</strong>
+          <small>{copy.unlockDescription}</small>
+        </div>
+      )}
+
+      <div className={`welcome-login-layer ${entryPhase === "open" ? "is-open" : ""}`} onMouseDown={(event) => event.target === event.currentTarget && closeLogin()} role="presentation">
+        <section aria-labelledby="welcome-login-title" aria-modal="true" className="login-card welcome-login-panel" role="dialog">
+          <button aria-label={copy.closeLogin} className="welcome-login-close" onClick={closeLogin} type="button"><Icon path={mdiClose} size={0.9} /></button>
+          <div className="welcome-login-brand"><img alt="N9" src="/n9-logo.jpg" /><span><strong>N9 SMS</strong><small>{copy.brandSubtitle}</small></span></div>
           <div className="login-card-top"><span className="login-card-icon"><Icon path={mdiDatabaseLockOutline} size={1.05} /></span><span className="eyebrow">{copy.loginEyebrow}</span></div>
-          <div className="login-card-heading"><h2>{copy.loginTitle}</h2><p>{copy.loginDescription}</p></div>
+          <div className="login-card-heading"><h2 id="welcome-login-title">{copy.loginTitle}</h2><p>{copy.loginDescription}</p></div>
           <form onSubmit={submit}>
             <label>
               <span>{copy.username}</span>

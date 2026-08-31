@@ -4,6 +4,7 @@ tmp/
 *.log
 *.png
 !public/og.png
+!public/n9-hero-light.png
 .DS_Store
 
 .vercel/

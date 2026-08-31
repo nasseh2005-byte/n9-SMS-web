@@ -66,6 +66,69 @@ final result: passed
 
 ---
 
+# N9 SMS Design QA — Full-Screen Live Archive Gateway
+
+## Comparison Target
+
+- Dark source visual truth: `C:\Users\win\AppData\Local\Temp\codex-clipboard-54931fc3-bca0-4fc7-a85e-2ef56f2b586a.png`, identical by SHA-256 to `public/og.png` (1731 × 909 px).
+- Light source visual truth: generated built-in ImageGen companion `public/n9-hero-light.png` (1731 × 909 px), preserving the source composition while changing the palette to pearl white and champagne-gold neon.
+- Supplied product logo: `E:\n9-group-web\public\products\n9-sms\icon.jpg`, copied unchanged to `public/n9-logo.jpg` (726 × 803 px).
+- Dark implementation: `tmp/product-design/landing-live-archives-dark.png` (1440 × 900 px).
+- Light implementation: `tmp/product-design/landing-live-archives-light.png` (1440 × 900 px).
+- Hover implementation: `tmp/product-design/landing-live-archives-hover.png` (1440 × 900 px).
+- Unlock implementation: `tmp/product-design/landing-live-archives-unlock.png` (1440 × 900 px).
+- Open login implementation: `tmp/product-design/landing-live-archives-login.png` (1440 × 900 px).
+- Mobile implementation: `tmp/product-design/landing-live-archives-mobile.png` (390 × 845 px from a 390 × 844 requested viewport).
+- Same-input source comparison: `tmp/product-design/landing-live-archives-comparison.png` (dark source/implementation and light source/implementation).
+- Focused interaction comparison: `tmp/product-design/landing-entry-flow-comparison.png` (hero → unlock signal → login slide).
+- State: signed out, Arabic/RTL, dark default; light, English/LTR, desktop hover, desktop login, and mobile touch states also checked.
+
+## Comparison History
+
+### Pass 1
+
+- [P1] The prior landing split the hero and login card immediately, so the supplied big-screen archive art never became the primary screen and sign-in was not intentionally revealed.
+- Fix: replaced the split layout with an aspect-locked full-screen image stage, kept the source artwork intact, and moved sign-in behind a lock CTA, unlock signal, and sliding panel.
+- [P1] The previous light mode recolored UI surfaces but had no equivalent light hero artwork.
+- Fix: generated and placed a dedicated 1731 × 909 pearl-and-gold source image with the same folders, trays, shields, perspective, and exact N9 SMS text.
+
+### Pass 2
+
+- [P0] The first unlock timer was cleared by an effect cleanup during the `closed → unlocking` state change, preventing the login panel from opening.
+- Fix: separated keyboard cleanup from unmount-only timer cleanup; the gate now reaches `is-open`, slides the panel in, and focuses the username field.
+- [P2] The login panel width was accidentally overridden to the whole viewport, and its dark mobile password field retained a white surface.
+- Fix: removed the competing width rule and added an explicit dark `pin-field` surface; final desktop panel is 420 px wide and mobile becomes a contained bottom sheet.
+- [P2] The initial archive callout appeared beside the selected tray and covered the source title/subtitle.
+- Fix: moved the callout into the free strip below the floating header and removed the hotspot transform that changed its fixed positioning context.
+- Post-fix comparison shows no remaining actionable P0, P1, or P2 mismatch.
+
+## Required Fidelity Surfaces
+
+- Fonts and typography: all typography embedded in the dark and light hero remains raster-original. UI labels use bundled Noto Sans Arabic with compact weights so header, callouts, and login remain subordinate to the artwork.
+- Spacing and layout rhythm: the 1731:909 image sits in a matching aspect-ratio frame, centered without stretching. Header and footer occupy safe outer strips; the CTA uses the negative area below the embedded subtitle.
+- Colors and tokens: dark uses the source navy/electric-blue/teal system. Light uses a separate pearl/ivory/champagne-gold image and warm-gold controls, not a CSS color filter.
+- Image quality and assets: both hero images, the N9 logo, folders, shields, locks, and checks are real raster assets. MDI is used only for standard interface controls; no custom SVG, div art, CSS drawing, or placeholder replaces source imagery.
+- Copy and content: image text remains exactly `N9 SMS` and `Secure SMS Evidence Workspace`; Arabic/English interface copy changes only the functional controls, feature callouts, and login sheet.
+
+## Focused Interaction Evidence
+
+- The archive hotspot follows pointer hover and click. Browser verification reported `:hover = true` and callout opacity `1`; click also persists the selected state with `aria-pressed`.
+- The entry sequence shows the lock layer, changes to the open-lock icon, removes the layer after 900 ms, and reveals the login panel using a 720 ms slide.
+- The panel focuses the username field after settling, closes with the visible close control, and resets password visibility on close.
+- Password visibility changed the input to `type=text` and the accessible label to «إخفاء كلمة المرور»; English mode changed the document to `lang=en`, `dir=ltr`, and `Sign in`.
+- Mobile exposes the three archive functions as touch targets, displays the selected feature description, and opens login as a bottom sheet with no horizontal overflow (`scrollWidth = 390`).
+
+## Runtime Verification
+
+- Fresh local page load rendered `public/og.png` and `public/n9-logo.jpg` with zero browser console errors.
+- `npm test`: passed, 37/37 tests.
+- `npm run build:vercel`: passed.
+- `npm run test:sites`: passed, 6/6 tests.
+
+final result: passed
+
+---
+
 # N9 SMS Design QA — Secure Digital Archive Landing
 
 ## Comparison Target
