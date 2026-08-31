@@ -2,7 +2,7 @@
 
 ## Final status
 
-- Automated tests: 27/27 passed.
+- Automated tests: 28/28 passed.
 - Production build: passed.
 - Browser console after a fresh reload and matching flow: 0 errors.
 - Desktop and 390 px mobile checks: no horizontal overflow.
@@ -50,6 +50,7 @@ Source: `C:\Users\win\Downloads\هاجديه (1).xml`
 - Numeric substrings do not match a different longer identifier.
 - Unmatched spreadsheet rows stay visible with a zero-candidate state and are never silently discarded.
 - Every candidate message remains available; candidate groups are no longer truncated and can be searched or sorted by smart score, newest, or oldest.
+- Candidates can be filtered to all, incoming, or outgoing messages. The filter changes only what is shown and what select-all includes; it does not remove the underlying matches or an approved manual selection.
 - Synthetic performance check: 36,642 messages against 1,000 identifiers completed in 67 ms in the local Node runtime.
 
 ## Complete archive display and persistence
@@ -61,6 +62,7 @@ Source: `C:\Users\win\Downloads\هاجديه (1).xml`
 - Imported XML archives are saved in browser IndexedDB and restored after a page reload, including the selected conversation and initial smart matches.
 - The built-in ten-message dataset is visibly labeled as a sample so it cannot be mistaken for an incomplete imported archive.
 - Browser verification covered full sample-thread rendering, date separators, candidate filtering, newest/oldest sorting, and a fresh console with 0 errors.
+- The iPhone status bar and header no longer reuse message content as a backdrop, so message text and links cannot appear behind the Dynamic Island or contact controls.
 - Large-archive verification produced 36,652 total messages after merging the 36,642-message XML with 10 local sample messages, then opened a 34,752-message conversation with only 160 message nodes rendered; repeated opening completed in about half a second and browser console errors remained at 0.
 
 ## Company workspaces and access control

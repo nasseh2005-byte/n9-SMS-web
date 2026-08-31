@@ -52,6 +52,7 @@ import {
   extractTerms,
   extractWorkbookTerms,
   filterConversationMessages,
+  filterMatchCandidates,
   getMessageTimeline,
   normalizeComparable,
   normalizeMessageIdentity,
@@ -363,11 +364,6 @@ function ConversationPhone({ clockMode, conversation, customTime, deviceStyle, s
     <div className={`phone-screen conversation-phone device-${deviceStyle} ${theme === "light" ? "phone-light" : ""}`} dir="rtl">
       <StatusBar clockMode={clockMode} customTime={customTime} deviceStyle={deviceStyle} value={phoneTime} />
       <header className="phone-conversation-header">
-        {deviceStyle === "iphone" && (
-          <div className="ios-header-message-backdrop" aria-hidden="true">
-            <LinkifiedBody body={allMessages.at(-2)?.body || allMessages.at(-1)?.body || ""} deviceStyle="iphone" />
-          </div>
-        )}
         <button aria-label="رجوع" className={`phone-icon-button ${deviceStyle === "iphone" ? "ios-thread-back" : ""}`} type="button">
           {deviceStyle === "iphone" && <span>{allMessages.length.toLocaleString("ar-SA-u-nu-latn")}</span>}
           <Icon path={mdiChevronRight} size={deviceStyle === "iphone" ? 1.25 : 1.1} />
@@ -935,6 +931,7 @@ export function App() {
   const [selectionMode, setSelectionMode] = useState("manual");
   const [candidateQuery, setCandidateQuery] = useState("");
   const [candidateSort, setCandidateSort] = useState("smart");
+  const [candidateDirection, setCandidateDirection] = useState("all");
   const [matchGroupLimit, setMatchGroupLimit] = useState(MATCH_GROUP_RENDER_BATCH);
   const [candidateLimits, setCandidateLimits] = useState({});
   const [batchSelection, setBatchSelection] = useState({});
@@ -999,17 +996,14 @@ export function App() {
       if (candidateSort === "oldest") return Number(a.message.date) - Number(b.message.date);
       return (b.scoreByTerm?.[term] || 0) - (a.scoreByTerm?.[term] || 0) || Number(b.message.date) - Number(a.message.date);
     });
-    const normalizedCandidateQuery = normalizeComparable(deferredCandidateQuery);
-    const visibleCandidates = normalizedCandidateQuery
-      ? candidates.filter(({ message }) => getComparableMessageText(message).includes(normalizedCandidateQuery))
-      : candidates;
+    const visibleCandidates = filterMatchCandidates(candidates, deferredCandidateQuery, candidateDirection);
     return {
       term,
       candidates,
       visibleCandidates,
       recommendedId: smartCandidates[0]?.message.id,
     };
-  }), [candidateSort, deferredCandidateQuery, matchTerms, matchesByTerm]);
+  }), [candidateDirection, candidateSort, deferredCandidateQuery, matchTerms, matchesByTerm]);
 
   const selectedEvidenceMatches = useMemo(() => matchGroups.flatMap((group) => {
     const selectedId = selectedByTerm[group.term] || (selectionMode === "auto" ? group.recommendedId : "");
@@ -1740,6 +1734,21 @@ export function App() {
               <option value="oldest">الأقدم</option>
             </select>
           </label>
+          <label className="candidate-sort candidate-direction">
+            <span>النوع</span>
+            <select
+              aria-label="فلترة الرسائل المرشحة حسب الاتجاه"
+              onChange={(event) => {
+                setCandidateDirection(event.target.value);
+                setCandidateLimits({});
+              }}
+              value={candidateDirection}
+            >
+              <option value="all">الكل</option>
+              <option value="incoming">واردة</option>
+              <option value="outgoing">صادرة</option>
+            </select>
+          </label>
         </div>
         <div className={`selection-status-card ${batchExportItems.length ? "is-ready" : "is-pending"}`} aria-label="حالة اختيار الأدلة">
           <div className="result-summary">
@@ -1771,7 +1780,7 @@ export function App() {
                 <div className="unmatched-number"><Icon path={mdiAlertCircleOutline} size={0.82} /><span><strong>لا توجد رسالة مطابقة</strong><small>أُبقي الرقم ظاهرًا حتى لا يُستبعد بصمت.</small></span></div>
               )}
               {group.candidates.length > 0 && !group.visibleCandidates.length && (
-                <div className="unmatched-number filtered-empty"><Icon path={mdiMagnify} size={0.82} /><span><strong>لا توجد نتيجة ضمن البحث</strong><small>امسح بحث المرشحين لعرض الرسائل كاملة.</small></span></div>
+                <div className="unmatched-number filtered-empty"><Icon path={mdiMagnify} size={0.82} /><span><strong>لا توجد نتيجة ضمن الفلاتر</strong><small>اختر «الكل» أو امسح البحث لعرض الرسائل كاملة.</small></span></div>
               )}
               {renderedCandidates.map(({ message, scoreByTerm }) => {
                 const chosenId = selectedByTerm[group.term] || (selectionMode === "auto" ? group.recommendedId : "");

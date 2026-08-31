@@ -9,6 +9,7 @@ import {
   extractTerms,
   extractWorkbookTerms,
   filterConversationMessages,
+  filterMatchCandidates,
   getMessageTimeline,
   normalizeDigits,
   normalizeMessageIdentity,
@@ -46,6 +47,18 @@ test("filters one conversation by body text, contact name, or number", () => {
 test("reuses the complete thread when conversation search is empty", () => {
   const messages = Array.from({ length: 10_000 }, (_, index) => ({ id: String(index), body: `رسالة ${index}` }));
   assert.equal(filterConversationMessages(messages, ""), messages);
+});
+
+test("filters match candidates by direction without removing the underlying results", () => {
+  const candidates = [
+    { message: { id: "incoming", type: "1", body: "رقم السداد ١٥٩١٧١٤", address: "EJADA" } },
+    { message: { id: "outgoing", type: "2", body: "تم إرسال رقم 1591714", address: "N9" } },
+  ];
+
+  assert.deepEqual(filterMatchCandidates(candidates, "1591714", "incoming").map(({ message }) => message.id), ["incoming"]);
+  assert.deepEqual(filterMatchCandidates(candidates, "", "outgoing").map(({ message }) => message.id), ["outgoing"]);
+  assert.equal(filterMatchCandidates(candidates, "", "all").length, 2);
+  assert.equal(candidates.length, 2);
 });
 
 test("expands scientific notation and rejects dates and fractional amounts", () => {

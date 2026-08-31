@@ -67,8 +67,18 @@
 
 ## Build Verification
 
-- `npm test`: passed, 27/27 tests.
+- `npm test`: passed, 28/28 tests.
 - `npm run build`: passed; emitted `dist/client/index.html`, `dist/server/index.js`, and `dist/.openai/hosting.json`.
 - `npm run test:sites`: passed, 5/5 tests.
+
+## 31 August 2026 — iPhone Safe-Header Regression
+
+- User evidence: `tmp/product-audit/01-iphone-overlap-before.png`.
+- Accepted implementation capture: `tmp/product-audit/02-iphone-safe-header-after.png`.
+- Focused before/after comparison: `tmp/product-audit/03-iphone-header-before-after.png`.
+- Root cause: the iPhone header deliberately repeated a prior SMS as a blurred backdrop, which put real message text and URLs behind the status bar, Dynamic Island, and contact controls.
+- Fix: removed the repeated message layer, made the status bar and contact header isolated opaque safe areas in both light and dark themes, and kept all SMS text and links inside the scrollable thread bubbles.
+- Result: the header is clear, the first visible message begins below it, links stay inside bubbles, and Android/Huawei markup remains unchanged.
+- Related usability improvement: match candidates now have a compact all/incoming/outgoing filter; filtered empty states retain every identifier and report `0 from total` rather than hiding it.
 
 final result: passed

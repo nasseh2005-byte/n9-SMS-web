@@ -51,6 +51,18 @@ export function filterConversationMessages(messages, query, conversation = {}) {
   ));
 }
 
+export function filterMatchCandidates(candidates, query = "", direction = "all") {
+  const normalizedQuery = normalizeSearchText(query);
+  return (candidates || []).filter(({ message }) => {
+    const incoming = message?.type !== "2";
+    const directionMatches = direction === "all"
+      || (direction === "incoming" && incoming)
+      || (direction === "outgoing" && !incoming);
+    const queryMatches = !normalizedQuery || getConversationSearchText(message).includes(normalizedQuery);
+    return directionMatches && queryMatches;
+  });
+}
+
 export function expandScientificNotation(value) {
   const text = normalizeDigits(value).trim();
   const match = text.match(/^([+-]?)(\d+)(?:\.(\d+))?[eE]([+-]?\d+)$/);
