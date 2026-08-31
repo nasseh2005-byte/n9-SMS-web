@@ -5,3 +5,8 @@ tmp/
 *.png
 !public/og.png
 .DS_Store
+
+.vercel/
+.env*
+!.env.example
+!.env.vercel

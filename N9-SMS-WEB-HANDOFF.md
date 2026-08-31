@@ -1,7 +1,7 @@
 # N9 SMS Web — المرجع الرئيسي وتسليم المشروع إلى Codex آخر
 
 > آخر تحديث توثيقي: 31 أغسطس 2026 — توقيت الرياض
-> حالة التطبيق: يعمل محلياً، وله نشر Sites خاص، ومجهز لنشر Vercel مشترك البيانات عبر Neon وVercel Blob؛ الاختبارات الآلية الحالية ناجحة 37/37.
+> حالة التطبيق: يعمل محلياً، وله نشر Sites خاص، ونسخة Vercel مفعلة بتخزين مشترك عبر Neon وPrivate Vercel Blob؛ الاختبارات الآلية الحالية ناجحة 37/37.
 > هذا الملف هو نقطة البداية لأي مطور أو وكيل Codex يستلم المشروع لاحقاً.
 
 ---
@@ -1153,11 +1153,19 @@ https://github.com/nasseh2005-byte/n9-SMS-web
 - أمر البناء: `npm run build:vercel`.
 - مجلد النشر: `dist/client`.
 - `/api/:path*` يذهب إلى Vercel Function، ثم جميع مسارات SPA الأخرى إلى `index.html`.
-- يلزم ربط Neon بالمشروع لتوفير `DATABASE_URL`، وربط Private Vercel Blob لتوفير token/OIDC، وإضافة `BOOTSTRAP_ADMIN_PASSWORD` سراً ثم إعادة النشر.
+- مشروع Vercel `sms` مرتبط بقاعدة Neon المسماة `n9-sms-neon` وبمخزن Private Blob المسمى `n9-sms-archives` في Frankfurt، ومتغير `BOOTSTRAP_ADMIN_PASSWORD` محفوظ كـSecret في Production وPreview وDevelopment.
 - المستخدمون والصلاحيات والجلسات مشتركة عبر Neon، وأرشيف كل شركة محفوظ في Blob خاص؛ بيانات SMS لا تدخل GitHub أو حزمة الواجهة.
 - لا تضع القيم السرية في `.env.vercel` لأنه ملف متعقب؛ `.env.example` يسجل الأسماء فقط.
 
 الموقع المنشور:
+
+```text
+https://sms-kappa-beige.vercel.app
+```
+
+تم التحقق من نسخة Vercel الفعلية بعد الربط: نجح دخول `nasseh` بدور `admin`، وتهيئة مخطط Neon، وظهور مساحة «شركة الهاجدية»، وإصدار رابط رفع خاص إلى Blob. بقي الأرشيف السحابي فارغاً عمداً حتى يرفع المستخدم XML الحقيقي من داخل التطبيق.
+
+نسخة Sites الخاصة:
 
 ```text
 https://n9-sms-evidence.sultan1990.chatgpt.site
