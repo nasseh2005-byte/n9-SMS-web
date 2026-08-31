@@ -450,6 +450,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .sms-bubble-wrap small { color: #9ba2ad; font-size: 6px; padding: 0 4px; }
 .sms-bubble-wrap.is-selected .sms-bubble { box-shadow: 0 0 0 2px #8ab4f8; }
 .message-link { max-width: 100%; text-decoration: underline; text-underline-offset: 2px; direction: ltr; unicode-bidi: isolate; overflow-wrap: anywhere; word-break: break-all; }
+.message-link.is-number { display: inline-block; white-space: nowrap; overflow-wrap: normal; word-break: normal; }
 .sms-bubble, .message-proof-bubble { min-width: 0; max-width: 100%; overflow: hidden; overflow-wrap: anywhere; word-break: break-word; }
 
 .composer-row { height: 58px; flex: 0 0 auto; padding: 7px 9px 11px; display: flex; align-items: center; gap: 7px; }
@@ -608,6 +609,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .export-capture { position: fixed; left: -9999px; top: 0; width: 393px; height: 852px; pointer-events: none; }
 .export-capture > div, .export-capture .phone-screen { width: 393px; height: 852px; }
 .export-capture .phone-screen { border-radius: 0; }
+.export-capture.iphone-export-capture,
+.export-capture.iphone-export-capture > div,
+.export-capture.iphone-export-capture .phone-screen { width: 562.5px; height: 441.75px; }
 .capture-version .message-proof-card { min-height: 300px; padding: 24px 18px; }
 .capture-version .message-proof-bubble { font-size: 14px; line-height: 1.72; }
 .capture-version .details-header { height: 68px; }
@@ -722,18 +726,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .device-iphone .composer-field svg { color: #a7a7ad; }
 .device-iphone .android-nav { display: none; }
 .device-iphone .ios-home-indicator { width: 116px; height: 4px; display: block; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); border-radius: 4px; background: rgba(255,255,255,.9); z-index: 5; }
-.device-iphone .details-header { height: 50px; border-bottom: 1px solid rgba(84,84,88,.36); background: rgba(14,14,15,.9); backdrop-filter: blur(18px) saturate(160%); }
-.device-iphone .details-header strong { font-size: 13px; font-weight: 600; }
-.device-iphone .details-content { padding: 12px 10px 42px; background: #000; }
-.device-iphone .message-proof-card { min-height: 320px; border-radius: 16px; background: #1c1c1e; }
-.device-iphone .proof-section h4 { color: #8e8e93; font-size: 9px; font-weight: 500; }
-.device-iphone .status-list { border: 0; border-radius: 14px; background: #1c1c1e; }
-.device-iphone .status-list div { border-bottom-color: #38383a; }
-.device-iphone .proof-details-list { padding: 12px 14px; border-radius: 14px; background: #1c1c1e; }
 .device-iphone.phone-light .device-cutout { background: #111; }
 .device-iphone.phone-light { background: #fff; }
-.device-iphone.phone-light .phone-conversation-header,
-.device-iphone.phone-light .details-header { border-bottom-color: rgba(60,60,67,.18); background: rgba(249,249,249,.9); }
+.device-iphone.phone-light .phone-conversation-header { border-bottom-color: rgba(60,60,67,.18); background: rgba(249,249,249,.9); }
 .device-iphone.phone-light .phone-conversation-header { background: #f9f9f9; box-shadow: none; }
 .device-iphone.phone-light .phone-statusbar { color: #000; background: #f9f9f9; }
 .device-iphone.phone-light .ios-battery-level { background: #000; color: #fff; }
@@ -749,13 +744,59 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .device-iphone.phone-light .composer-plus { background: #e4e5e8; color: #6d6d72; }
 .device-iphone.phone-light .composer-field { border-color: #c7c7cc; background: #fff; }
 .device-iphone.phone-light .ios-home-indicator { background: rgba(20,20,22,.82); }
-.device-iphone .message-proof-bubble { border-radius: 20px; background: #2c2c2e; }
-.device-iphone.phone-light .details-content { background: #f2f2f7; }
-.device-iphone.phone-light .message-proof-card,
-.device-iphone.phone-light .status-list,
-.device-iphone.phone-light .proof-details-list { background: #fff; }
-.device-iphone.phone-light .message-proof-bubble { background: #e9e9eb; }
-.device-iphone.phone-light .status-list div { border-bottom-color: #e5e5ea; }
+
+.iphone-evidence-screen {
+  padding: 12px 16px 18px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  background: #000;
+  color: #f5f5f7;
+  font-family: "SF Arabic", "Geeza Pro", -apple-system, BlinkMacSystemFont, "Noto Sans Arabic", sans-serif;
+}
+.iphone-evidence-rule { grid-column: 1 / -1; height: 1px; background: #2b2b2d; }
+.iphone-evidence-header { grid-column: 1 / -1; min-height: 58px; padding: 17px 1px 8px; display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; direction: ltr; }
+.iphone-evidence-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fff; font-size: 20px; line-height: 1.15; font-weight: 700; letter-spacing: .01em; }
+.iphone-evidence-header time { flex: 0 0 auto; color: #9c9ca3; font-size: 18px; line-height: 1.15; font-weight: 600; }
+.iphone-evidence-message { grid-column: 1 / -1; grid-row: 3; min-height: 0; padding-top: 6px; display: flex; align-items: flex-start; direction: ltr; }
+.iphone-evidence-bubble { position: relative; z-index: 1; width: fit-content; max-width: 70%; padding: 18px 20px 20px; border-radius: 32px; background: #303033; color: #c7c7cc; direction: rtl; text-align: right; white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; font-size: 22px; line-height: 1.5; font-weight: 500; letter-spacing: -.025em; }
+.iphone-evidence-bubble.incoming { margin-right: 13%; margin-left: auto; }
+.iphone-evidence-bubble.outgoing { margin-right: auto; margin-left: 13%; background: #0a84ff; color: #fff; }
+.iphone-evidence-bubble::after { content: ""; width: 17px; height: 23px; position: absolute; bottom: 0; z-index: -1; background: inherit; }
+.iphone-evidence-bubble.incoming::after { left: -6px; border-bottom-right-radius: 14px; transform: skewX(-20deg); }
+.iphone-evidence-bubble.outgoing::after { right: -6px; border-bottom-left-radius: 14px; transform: skewX(20deg); }
+.iphone-evidence-bubble .message-link { color: inherit; text-decoration: none; }
+.iphone-evidence-bubble .message-link.is-url { display: inline-block; max-width: none; direction: ltr; unicode-bidi: isolate; text-align: left; white-space: nowrap; overflow-wrap: normal; word-break: normal; font-size: .9em; letter-spacing: -.03em; }
+.iphone-evidence-bubble.incoming .message-link.is-number { color: #fff; }
+.iphone-evidence-bubble.is-medium { font-size: 21px; }
+.iphone-evidence-bubble.is-long { font-size: 18px; }
+.iphone-evidence-bubble.is-extra-long { font-size: 13.5px; }
+.iphone-evidence-bubble.is-very-long { font-size: 12.5px; }
+.iphone-evidence-bubble.is-tiny { font-size: 10px; line-height: 1.42; }
+.iphone-evidence-footer { grid-column: 1; grid-row: 3; z-index: 2; min-height: 42px; align-self: end; display: flex; align-items: flex-end; gap: 12px; color: #8e8e93; direction: ltr; pointer-events: none; }
+.iphone-evidence-footer > svg { flex: 0 0 auto; }
+.iphone-evidence-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(145deg, #645c91, #312c4e); color: #fff; display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(255,255,255,.28); }
+.iphone-evidence-screen.phone-light { background: #fff; color: #111; }
+.iphone-evidence-screen.phone-light .iphone-evidence-rule { background: #dedee2; }
+.iphone-evidence-screen.phone-light .iphone-evidence-header strong { color: #111; }
+.iphone-evidence-screen.phone-light .iphone-evidence-header time { color: #77777f; }
+.iphone-evidence-screen.phone-light .iphone-evidence-bubble.incoming { background: #e9e9eb; color: #161618; }
+.iphone-evidence-screen.phone-light .iphone-evidence-bubble.incoming .message-link.is-number { color: #161618; }
+.iphone-evidence-screen.phone-light .iphone-evidence-footer { color: #8e8e93; }
+.iphone-export-capture .iphone-evidence-screen { padding: 11px 24px 18px; }
+.iphone-export-capture .iphone-evidence-rule { height: 1.5px; }
+.iphone-export-capture .iphone-evidence-header { min-height: 40px; padding: 9px 1px 5px; }
+.iphone-export-capture .iphone-evidence-header strong { font-size: 24px; }
+.iphone-export-capture .iphone-evidence-header time { font-size: 21px; }
+.iphone-export-capture .iphone-evidence-message { padding-top: 7px; }
+.iphone-export-capture .iphone-evidence-bubble { max-width: 68%; padding: 20px 25px 23px; border-radius: 38px; font-size: 34px; line-height: 1.45; }
+.iphone-export-capture .iphone-evidence-bubble.is-medium { font-size: 31px; }
+.iphone-export-capture .iphone-evidence-bubble.is-long { font-size: 27px; }
+.iphone-export-capture .iphone-evidence-bubble.is-extra-long { font-size: 18px; }
+.iphone-export-capture .iphone-evidence-bubble.is-very-long { font-size: 15.5px; line-height: 1.4; }
+.iphone-export-capture .iphone-evidence-bubble.is-tiny { font-size: 12px; line-height: 1.38; }
+.iphone-export-capture .iphone-evidence-footer { min-height: 44px; gap: 16px; }
+.iphone-export-capture .iphone-evidence-avatar { width: 41px; height: 41px; }
 
 .phone-frame.frame-huawei { border-radius: 38px; background: linear-gradient(145deg,#17191e,#08090c); box-shadow: 0 24px 58px rgba(34,38,48,.27), inset 0 0 0 1px #3b414a; }
 .device-huawei { border-radius: 30px; background: #17191e; }

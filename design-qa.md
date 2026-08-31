@@ -53,7 +53,7 @@
 
 ## Build Verification
 
-- `npm test`: passed, 32/32 tests.
+- `npm test`: passed, 33/33 tests.
 - `npm run build:vercel`: passed.
 - Final source diff has no whitespace errors.
 
@@ -61,5 +61,53 @@
 
 - [P3] Samsung and Huawei use different proprietary system fonts and navigation glyphs; N9 intentionally keeps its bundled Arabic font and common MDI navigation set for stable cross-browser export.
 - [P3] The supplied Android reference is English/LTR while N9 is Arabic/RTL, so header and label alignment are mirrored rather than copied literally.
+
+final result: passed
+
+---
+
+# N9 SMS Design QA — iPhone Single-Message Evidence
+
+## Comparison Target
+
+- Source visual truth: `C:\Users\win\Downloads\1734198-1-3.pdf`.
+- Rendered source pages: `tmp/pdfs/iphone-reference/page-1.png`, `page-2.png`, and `page-3.png` at 144 DPI.
+- Initial corrected export: `C:\Users\win\Downloads\1523486575-1591714 (6).png`.
+- Long-message fit export: `C:\Users\win\Downloads\1523486575-241400071101 (2).png`.
+- Final in-app verification capture: `tmp/product-design/iphone-preview-final.png`.
+- Same-size comparison input: `tmp/product-design/iphone-reference-vs-final.png` (reference on the left, implementation on the right).
+- State: Arabic incoming EJADA SMS, original XML date, Apple iPhone selected, dark and light themes checked.
+
+## Source Anatomy
+
+- The reference is a compact horizontal conversation crop, not an iOS details page.
+- Its visible structure is limited to a thin top rule, sender at the upper left, date at the upper right, one gray incoming iMessage-style bubble, a back chevron aligned with the lower edge of the bubble, and an avatar only for a numeric sender.
+- No device frame, status bar, Dynamic Island, title, status rows, type, priority, provenance, or N9 explanation appears in the evidence crop.
+
+## Comparison History
+
+### Pass 1
+
+- [P1] The old iPhone evidence reused the Android/Huawei details screen and displayed «التفاصيل»، received/sent rows, type, priority, and device chrome.
+- Fix: introduced `IphoneEvidencePhone` and routed Apple iPhone evidence to a dedicated conversation-crop component.
+- [P2] Long identifiers could break across lines, and the light theme inherited white number styling.
+- Fix: long numeric tokens are isolated and kept on one line; the light incoming bubble renders them in the same dark ink as the body.
+
+### Pass 2
+
+- [P2] A long real SMS initially clipped at the lower edge.
+- Fix: added message-length classes and capture-specific typography so the complete SMS fits within the fixed export surface.
+- [P2] LTR URLs could reorder inside Arabic text, and the footer arrow sat at the bottom of the canvas instead of the lower edge of the bubble.
+- Fix: URL tokens use isolated LTR flow; the message and footer now share the same grid row so the arrow follows the bubble height, matching the reference behavior.
+
+## Fidelity And Functional Verification
+
+- Capture CSS size is `562.5×441.75px`; `pixelRatio: 2` produces approximately `1125×884px`, matching the rendered reference density and aspect ratio.
+- Sender aliases still normalize to the user-confirmed `EJADA`, despite the older `EJADH` text visible in the reference PDF.
+- The displayed date comes from `message.date` through a dedicated Arabic-digit Gregorian formatter; no XML timestamp is changed.
+- Dark and light previews both preserve the compact anatomy, readable number contrast, bubble tail, and arrow alignment.
+- The real image-export path completed successfully in the browser and reported a high-resolution evidence export; no browser console error was recorded.
+- Android and Huawei remain on their separate native details-screen path and were not visually changed by the iPhone branch.
+- No actionable P0, P1, or P2 difference remains. Message wording, current dataset date, and the corrected sender spelling are intentional data differences.
 
 final result: passed

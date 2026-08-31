@@ -2,7 +2,7 @@
 
 ## Final status
 
-- Automated tests: 32/32 passed.
+- Automated tests: 33/33 passed.
 - Sites and Vercel production builds: passed.
 - Browser console after a fresh reload and matching flow: 0 errors.
 - Desktop and 390 px mobile checks: no horizontal overflow.
@@ -63,6 +63,7 @@ Source: `C:\Users\win\Downloads\هاجديه (1).xml`
 - The built-in ten-message dataset is visibly labeled as a sample so it cannot be mistaken for an incomplete imported archive.
 - Browser verification covered full sample-thread rendering, date separators, candidate filtering, newest/oldest sorting, and a fresh console with 0 errors.
 - The iPhone status bar and header no longer reuse message content as a backdrop, so message text and links cannot appear behind the Dynamic Island or contact controls.
+- The iPhone single-message evidence path is intentionally separate from Android/Huawei details: it exports only sender, original XML date, one iMessage-style bubble, the back chevron, and an optional numeric-sender avatar on a 562.5×441.75 capture surface. Status/type/priority fields and device chrome are excluded.
 - Large-archive verification produced 36,652 total messages after merging the 36,642-message XML with 10 local sample messages, then opened a 34,752-message conversation with only 160 message nodes rendered; repeated opening completed in about half a second and browser console errors remained at 0.
 
 ## Company workspaces and access control
@@ -90,6 +91,7 @@ Source: `C:\Users\win\Downloads\هاجديه (1).xml`
 - Phone style and clock preferences are saved per device without modifying any imported XML timestamp.
 - Image and ZIP evidence exports receive the selected phone style and clock mode.
 - Android and Huawei evidence content now mirrors a practical native details screen: message preview, received/sent status, text-message type, and normal priority. Non-native sender cards, SMS badges, provenance panels, and N9 copy are excluded from the phone capture.
+- iPhone evidence preserves the exact XML message date, keeps long identifiers unbroken, isolates LTR URLs inside RTL Arabic text, scales long bodies to avoid clipping, and supports both light and dark captures without mutating source data.
 - Browser measurement on a long real archive message confirmed the 393×852 export surface had `758px` client height and `758px` scroll height, so the complete evidence layout fit without hidden overflow.
 
 ## PDF and multi-selection export

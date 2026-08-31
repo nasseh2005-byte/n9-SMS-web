@@ -126,6 +126,14 @@ function formatIphoneThreadStamp(value) {
   return `${dayLabel} ${formatTime(value)}`;
 }
 
+function formatIphoneEvidenceDate(value) {
+  const timestamp = parseXmlTimestamp(value);
+  if (!timestamp) return "—";
+  const date = new Date(timestamp);
+  const toArabicDigits = (part) => String(part).replace(/\d/g, (digit) => "٠١٢٣٤٥٦٧٨٩"[Number(digit)]);
+  return `${toArabicDigits(date.getFullYear())}/${toArabicDigits(date.getMonth() + 1)}/${toArabicDigits(date.getDate())}`;
+}
+
 function getInitials(name = "؟") {
   const words = name.trim().split(/\s+/).filter(Boolean);
   return words.slice(0, 2).map((word) => word[0]).join("").toUpperCase() || "؟";
@@ -284,9 +292,13 @@ const LinkifiedBody = memo(function LinkifiedBody({ body, deviceStyle = "android
     ? /(https?:\/\/\S+|[0-9٠-٩۰-۹]{7,})/g
     : /(https?:\/\/\S+)/g;
   const parts = String(body).split(pattern);
-  return parts.map((part, index) => (/^https?:\/\//.test(part) || (deviceStyle === "iphone" && /^[0-9٠-٩۰-۹]{7,}$/.test(part)))
-    ? <span className="message-link" key={`${part}-${index}`}>{part}</span>
-    : <span key={`${part}-${index}`}>{part}</span>);
+  return parts.map((part, index) => {
+    const isUrl = /^https?:\/\//.test(part);
+    const isNumber = deviceStyle === "iphone" && /^[0-9٠-٩۰-۹]{7,}$/.test(part);
+    return isUrl || isNumber
+      ? <span className={`message-link ${isUrl ? "is-url" : "is-number"}`} key={`${part}-${index}`}>{part}</span>
+      : <span key={`${part}-${index}`}>{part}</span>;
+  });
 });
 
 function ConversationPhone({ clockMode, conversation, customTime, deviceStyle, selectedId, onSelect, theme }) {
@@ -464,7 +476,47 @@ function ConversationPhone({ clockMode, conversation, customTime, deviceStyle, s
   );
 }
 
+function IphoneEvidencePhone({ capture = false, message, theme = "dark" }) {
+  const body = message?.body || "اختر رسالة لعرض الدليل";
+  const sender = message?.contactName && message.contactName !== "(Unknown)"
+    ? message.contactName
+    : message?.address || "SMS";
+  const incoming = message?.type !== "2";
+  const numericSender = /^\+?[\d\s()-]+$/.test(sender);
+  const lengthClass = body.length > 700
+    ? "is-tiny"
+    : body.length > 320
+      ? "is-very-long"
+      : body.length > 220
+        ? "is-extra-long"
+        : body.length > 175
+          ? "is-long"
+          : body.length > 95
+            ? "is-medium"
+            : "is-short";
+
+  return (
+    <div className={`phone-screen iphone-evidence-screen ${capture ? "capture-version" : ""} ${theme === "light" ? "phone-light" : ""}`} dir="ltr">
+      <div className="iphone-evidence-rule" aria-hidden="true" />
+      <header className="iphone-evidence-header">
+        <strong dir="auto">{sender}</strong>
+        <time dir="ltr">{formatIphoneEvidenceDate(message?.date)}</time>
+      </header>
+      <main className="iphone-evidence-message" dir="rtl">
+        <div className={`iphone-evidence-bubble ${incoming ? "incoming" : "outgoing"} ${lengthClass}`}>
+          <LinkifiedBody body={body} deviceStyle="iphone" />
+        </div>
+      </main>
+      <footer className="iphone-evidence-footer" aria-hidden="true">
+        <Icon path={mdiChevronLeft} size={1.35} />
+        {numericSender && <span className="iphone-evidence-avatar"><Icon path={mdiAccount} size={1.55} /></span>}
+      </footer>
+    </div>
+  );
+}
+
 function EvidencePhone({ clockMode, customTime, deviceStyle = "android", message, capture = false, theme = "dark" }) {
+  if (deviceStyle === "iphone") return <IphoneEvidencePhone capture={capture} message={message} theme={theme} />;
   const timeline = getMessageTimeline(message);
   return (
     <div className={`phone-screen details-phone device-${deviceStyle} ${capture ? "capture-version" : ""} ${theme === "light" ? "phone-light" : ""}`} dir="rtl">
@@ -502,7 +554,6 @@ function EvidencePhone({ clockMode, customTime, deviceStyle = "android", message
         <Icon path={mdiCircleOutline} size={0.64} />
         <Icon className="android-back-icon" path={mdiTriangleOutline} size={0.64} />
       </div>
-      {deviceStyle === "iphone" && <span className="ios-home-indicator" aria-hidden="true" />}
     </div>
   );
 }
@@ -1829,7 +1880,7 @@ export function App() {
       {usersDialogOpen && <UsersDialog currentUser={currentUser} loading={managementBusy} onClose={() => setUsersDialogOpen(false)} onCreate={handleCreateUser} onUpdate={handleUpdateUser} users={users} workspaces={workspaces} />}
       {toast && <div className="toast" role="status"><Icon path={mdiCheckCircle} size={0.82} />{toast}</div>}
 
-      <div className="export-capture" aria-hidden="true">
+      <div className={`export-capture ${deviceStyle === "iphone" ? "iphone-export-capture" : ""}`} aria-hidden="true">
         <div ref={captureRef}><EvidencePhone capture clockMode={clockMode} customTime={customTime} deviceStyle={deviceStyle} message={exportingMatch || selectedMessage} theme={theme} /></div>
       </div>
     </main>
