@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/prepare-sites-build.mjs",
@@ -16,6 +19,8 @@
     "@fontsource/noto-sans-arabic": "5.2.8",
     "@mdi/js": "7.4.47",
     "@mdi/react": "1.6.1",
+    "@neondatabase/serverless": "1.1.0",
+    "@vercel/blob": "2.8.0",
     "@vitejs/plugin-react": "5.0.4",
     "html-to-image": "1.11.13",
     "jszip": "^3.10.1",

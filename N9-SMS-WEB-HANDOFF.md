@@ -1,7 +1,7 @@
 # N9 SMS Web — المرجع الرئيسي وتسليم المشروع إلى Codex آخر
 
 > آخر تحديث توثيقي: 31 أغسطس 2026 — توقيت الرياض
-> حالة التطبيق: يعمل محلياً، وله نشر Sites خاص، ومجهز لنشر Vercel محلي البيانات؛ الاختبارات الآلية الحالية ناجحة 28/28.
+> حالة التطبيق: يعمل محلياً، وله نشر Sites خاص، ومجهز لنشر Vercel مشترك البيانات عبر Neon وVercel Blob؛ الاختبارات الآلية الحالية ناجحة 32/32.
 > هذا الملف هو نقطة البداية لأي مطور أو وكيل Codex يستلم المشروع لاحقاً.
 
 ---
@@ -54,7 +54,7 @@
 - وقت شاشة هاتف أصلي أو حي أو مخصص.
 - نسخ نص الرسالة.
 - تصدير PNG وPDF وZIP وCSV بأسماء مستخرجة من أرقام الرسالة.
-- حفظ محلي في وضع التطوير، وحفظ سحابي D1/R2 في النسخة المنشورة.
+- حفظ محلي في وضع التطوير، وحفظ سحابي D1/R2 في Sites أو Neon/private Blob في Vercel.
 
 الهوية البصرية مستوحاة بقوة من **Google Messages** مع المحافظة على طابع منتج N9 SMS وأدوات الأدلة والمطابقة.
 
@@ -123,9 +123,10 @@
 ### 5.7 الحفظ الدائم
 
 - البيانات العملية ليست `localStorage` فقط.
-- النسخة المنشورة تستخدم D1 وR2.
-- IndexedDB هو بديل تطوير محلي، ويستخدمه أيضاً build Vercel الحالي كنسخة شخصية محلية في المتصفح.
-- وضع Vercel الحالي لا يحقق المشاركة بين الأجهزة ولا يمثل بوابة صلاحيات خادمية؛ النسخة المشتركة تبقى Worker + D1/R2 إلى أن يضاف backend متوافق مع Vercel.
+- نسخة Sites المنشورة تستخدم D1 وR2.
+- نسخة Vercel تستخدم Neon Postgres للمستخدمين والجلسات والشركات والصلاحيات، وVercel Blob خاصاً لأرشيف كل شركة.
+- IndexedDB بديل تطوير محلي فقط؛ لا يجوز أن تتراجع نسخة Vercel إليه بصمت عند غياب إعداد سحابي.
+- ملفات Vercel الكبيرة تنتقل مباشرة بين المتصفح المصرح وBlob عبر روابط قصيرة العمر ومحددة العملية، ثم يتحقق الخادم من الملف ويعتمده بقفل إصدار متفائل يمنع الكتابة فوق تعديل جهاز آخر.
 
 ### 5.8 أداء الأرشيفات الكبيرة
 
@@ -223,10 +224,14 @@
 ```mermaid
 flowchart LR
     U[المستخدم] --> UI[React + Vite UI]
-    UI -->|DEV أو Vercel browser-local| IDX[(IndexedDB محلي)]
-    UI -->|الإنتاج /api| W[Cloudflare-compatible Worker]
+    UI -->|DEV فقط| IDX[(IndexedDB محلي)]
+    UI -->|Sites /api| W[Cloudflare-compatible Worker]
     W --> D1[(D1: users/workspaces/sessions)]
     W --> R2[(R2: JSON archive per workspace)]
+    UI -->|Vercel /api| VF[Vercel Function]
+    VF --> PG[(Neon Postgres: users/workspaces/sessions)]
+    VF -->|روابط GET/PUT مؤقتة| VB[(Private Vercel Blob)]
+    UI -->|نقل الأرشيف الموقّع| VB
     XML[SMS XML] --> UI
     XLSX[Excel / CSV] --> UI
     UI --> PNG[PNG evidence]
@@ -237,7 +242,7 @@ flowchart LR
 
 ### قرار مهم
 
-الواجهة لا تتعامل مباشرة مع D1 أو R2. كل ذلك يمر عبر `workspaceApi.js`، الذي يختار التخزين المحلي في وضع Vite DEV أو عندما تكون `VITE_N9_STORAGE_MODE=local`، ويستخدم `/api` في بناء الإنتاج الخادمي. يضبط build Vercel المتغير المحلي عبر `.env.vercel`.
+كل اختيار تخزين يمر عبر `workspaceApi.js`: وضع Vite DEV يستخدم IndexedDB، ووضع Sites يستخدم Worker + D1/R2، ووضع Vercel الذي تحدده `.env.vercel` يستخدم Vercel Function + Neon. لا يحصل المتصفح على مفتاح Blob؛ يحصل بعد التحقق من الجلسة والعضوية على رابط GET أو PUT قصير العمر لأرشيف شركة واحدة.
 
 ---
 
@@ -253,11 +258,12 @@ flowchart LR
 | قراءة Excel | SheetJS `xlsx` |
 | صورة الهاتف | `html-to-image` |
 | ZIP | `jszip` |
-| تخزين الإنتاج المنظم | Cloudflare D1 |
-| تخزين أرشيف الرسائل | Cloudflare R2 |
-| تخزين التطوير وVercel الحالي | IndexedDB |
-| الاستضافة الخادمية | OpenAI Sites |
-| معاينة Vercel | Vite SPA + IndexedDB محلي في كل متصفح |
+| تخزين Sites المنظم | Cloudflare D1 |
+| أرشيفات Sites | Cloudflare R2 |
+| تخزين Vercel المنظم | Neon Postgres عبر `@neondatabase/serverless` |
+| أرشيفات Vercel | Private Vercel Blob عبر `@vercel/blob` |
+| تخزين التطوير | IndexedDB |
+| الاستضافة الخادمية | OpenAI Sites أو Vercel Functions |
 | الاختبارات | Node test runner |
 
 لا توجد حاجة حالياً إلى React Router أو مكتبة state خارجية؛ التطبيق صفحة واحدة وحالته المركزية في `App.jsx`.
@@ -272,8 +278,14 @@ n9-sms-web/
 │  └─ hosting.json                 # project_id وربط D1/R2 المنطقي
 ├─ db/
 │  ├─ schema.ts                    # مرجع مخطط D1
-│  └─ migrations/
-│     └─ 0001_company_workspaces.sql
+│  ├─ migrations/
+│  │  └─ 0001_company_workspaces.sql
+│  └─ vercel/
+│     └─ 0001_cloud_workspaces.sql # مخطط Neon المرجعي
+├─ api/
+│  └─ index.js                     # نقطة دخول Vercel Function
+├─ server/
+│  └─ vercelApi.js                 # auth + Neon + signed private Blob
 ├─ public/
 │  └─ og.png                       # بطاقة المشاركة الحالية؛ لا تستبدلها بلا سبب
 ├─ scripts/
@@ -292,7 +304,8 @@ n9-sms-web/
 │  ├─ data-utils.test.mjs          # اختبارات البيانات والمطابقة والمنشئ
 │  ├─ pdf-utils.test.mjs           # اختبارات أسماء الملفات وبنية PDF
 │  ├─ sites-worker.test.mjs        # اختبارات auth/static fallback/package
-│  └─ vercel-config.test.mjs       # اختبارات إعداد build ومسارات Vercel
+│  ├─ vercel-api.test.mjs          # تشفير ومسارات ومخطط API السحابي
+│  └─ vercel-config.test.mjs       # إعداد build/API/Blob لـVercel
 ├─ worker/
 │  └─ index.js                     # API + auth + D1/R2 + static assets
 ├─ AGENTS.md                       # قرارات ملزمة لأي وكيل
@@ -301,8 +314,9 @@ n9-sms-web/
 ├─ qa-numbers.csv                  # رقمان مرجعيان للاختبار
 ├─ N9-SMS-WEB-HANDOFF.md           # هذا المستند
 ├─ README.md                        # تشغيل سريع ونشر GitHub/Vercel
-├─ .env.vercel                     # يفعّل التخزين المحلي في build Vercel
-├─ vercel.json                     # build/output/SPA rewrite لـVercel
+├─ .env.example                    # أسماء env المطلوبة بلا أسرار
+├─ .env.vercel                     # يفعّل بوابة Vercel السحابية في الواجهة
+├─ vercel.json                     # Function/API rewrite/build/output لـVercel
 ├─ package.json
 ├─ vite.config.mjs
 └─ index.html
@@ -833,6 +847,10 @@ workspaces/{workspaceId}/archives/{uuid}.json
 | POST | `/api/workspaces` | إنشاء شركة | admin |
 | GET | `/api/workspaces/:id/archive` | جلب الأرشيف | عضو أو admin |
 | PUT | `/api/workspaces/:id/archive` | حفظ الأرشيف | عضو أو admin |
+| POST | `/api/workspaces/:id/archive/upload-url` | رابط PUT قصير العمر لـBlob في Vercel | عضو أو admin |
+| POST | `/api/workspaces/:id/archive/complete` | تحقق واعتماد الأرشيف المرفوع في Vercel | عضو أو admin |
+
+مسار `PUT archive` هو مسار Sites. في Vercel تستعمل الواجهة مساري `upload-url` و`complete` لأن حمولة Vercel Function محدودة، بينما قد يتجاوز أرشيف XML الحقيقي هذا الحد.
 
 المسارات غير المعروفة تحت `/api` تعيد 404 JSON، ولا تسقط إلى تطبيق الواجهة.
 
@@ -850,7 +868,7 @@ workspaces/{workspaceId}/archives/{uuid}.json
 - أول تشغيل ينشئ بيانات تجريبية إذا لم يوجد أرشيف.
 - هذا الوضع لا يشارك البيانات بين الأجهزة.
 
-### الإنتاج
+### إنتاج Sites
 
 - `workspaceApi.js` يستدعي `/api`.
 - D1 للحسابات والجلسات والشركات والعضويات.
@@ -858,7 +876,17 @@ workspaces/{workspaceId}/archives/{uuid}.json
 - Cookie جلسة آمنة.
 - البيانات متاحة عبر الأجهزة للمستخدم المصرح.
 
-لا تعتبر بيانات DEV هي نفس بيانات الموقع المنشور.
+### إنتاج Vercel
+
+- `.env.vercel` يحدد `VITE_N9_STORAGE_MODE=vercel`.
+- `api/index.js` يمرر الطلبات إلى `server/vercelApi.js`.
+- Neon للحسابات والجلسات والشركات والعضويات، وprivate Blob للأرشيفات.
+- `BOOTSTRAP_ADMIN_PASSWORD` قيمة خادم مطلوبة عند إنشاء المدير `nasseh` لأول مرة، ولا تُضمّن في JavaScript.
+- الواجهة ترفع JSON مباشرة إلى Blob برابط PUT مؤقت، ثم يقرأه الخادم ويتحقق من عدد الرسائل والحجم قبل تحديث مساحة الشركة.
+- `archive_version` يمنع جهازاً من الكتابة فوق أرشيف أحدث حُفظ أثناء عملية الرفع.
+- غياب `DATABASE_URL` أو إعداد Blob ينتج 503 عربي واضح ولا يتحول إلى IndexedDB.
+
+لا تعتبر بيانات DEV أو IndexedDB القديمة هي نفس بيانات الموقع المنشور. عند التحويل لأول مرة يجب إعادة إنشاء المستخدمين ورفع XML مرة واحدة، ثم تصبح البيانات مشتركة عبر الأجهزة.
 
 ---
 
@@ -1002,8 +1030,8 @@ npm test
 الحالة الموثقة عند إنشاء هذا الملف:
 
 ```text
-28 tests
-28 pass
+32 tests
+32 pass
 0 fail
 ```
 
@@ -1044,15 +1072,23 @@ npm test
 
 ### تغطية `vercel-config.test.mjs`
 
-- استخدام `npm run build:vercel` ونشر `dist/client`.
-- وجود SPA rewrite إلى `index.html`.
-- تفعيل `VITE_N9_STORAGE_MODE=local` في `.env.vercel` وربطه ببوابة التخزين.
+- استخدام `npm run build:vercel` ونشر `dist/client` مع Function catch-all.
+- وجود API rewrite قبل SPA rewrite إلى `index.html`.
+- تفعيل `VITE_N9_STORAGE_MODE=vercel` وربطه بتدفق signed Blob upload.
+- تثبيت حزم Neon وVercel Blob ومدة Function المناسبة.
+
+### تغطية `vercel-api.test.mjs`
+
+- PBKDF2 لكلمات المرور ورفض PIN المختلف.
+- المحافظة على مسارات API المتداخلة بعد rewrite.
+- وجود جلسات مشتركة وقفل `archive_version` ومؤشر username غير حساس لحالة الأحرف.
+- إرجاع 503 واضح عند غياب قاعدة البيانات بدل fallback محلي.
 
 ### ما لا تغطيه الاختبارات الآلية بالكامل
 
 - DOM بصري لكل الثيمات.
 - ZIP كبير جداً.
-- اختبار تكامل D1/R2 حقيقي متعدد المستخدمين.
+- اختبار تكامل D1/R2 وNeon/Blob حقيقي متعدد المستخدمين.
 - ضغط 250,000 رسالة في متصفح ضعيف.
 
 تم التحقق يدوياً في المتصفح من التحديد المتعدد، تحديد الكل، مسح التحديد، تنزيل PDF مباشر، وإنشاء ZIP يحوي ملفي PDF صالحين. كما فُحص PDF فعلي عبر `pypdf` ورندر Poppler وكانت الصفحة سليمة بصرياً.
@@ -1088,7 +1124,7 @@ dist/.openai/hosting.json
 
 `prepare-sites-build.mjs` مسؤول عن نسخ Worker وhosting metadata إلى `dist` بعد Vite build.
 
-أما `npm run build:vercel` فيبني Vite بوضع `vercel` وينشر `dist/client` فقط وفق `vercel.json`.
+أما `npm run build:vercel` فيبني Vite بوضع `vercel`. ينشر `vercel.json` ملفات `dist/client` ويحوّل `/api/*` أولاً إلى `api/index.js` قبل SPA fallback.
 
 ---
 
@@ -1107,9 +1143,10 @@ https://github.com/nasseh2005-byte/n9-SMS-web
 - استيراد المستودع في Vercel يقرأ `vercel.json`.
 - أمر البناء: `npm run build:vercel`.
 - مجلد النشر: `dist/client`.
-- جميع مسارات SPA يعاد توجيهها إلى `index.html`.
-- البيانات والحسابات في هذه النسخة محفوظة في IndexedDB داخل المتصفح نفسه؛ لا تتزامن بين الأجهزة، ولا ترفع رسائل SMS إلى GitHub أو Vercel.
-- للحصول على مستخدمين وصلاحيات مشتركة على أجهزة متعددة في Vercel، يلزم backend وقاعدة بيانات خادمية قبل اعتماد النسخة تشغيلياً.
+- `/api/:path*` يذهب إلى Vercel Function، ثم جميع مسارات SPA الأخرى إلى `index.html`.
+- يلزم ربط Neon بالمشروع لتوفير `DATABASE_URL`، وربط Private Vercel Blob لتوفير token/OIDC، وإضافة `BOOTSTRAP_ADMIN_PASSWORD` سراً ثم إعادة النشر.
+- المستخدمون والصلاحيات والجلسات مشتركة عبر Neon، وأرشيف كل شركة محفوظ في Blob خاص؛ بيانات SMS لا تدخل GitHub أو حزمة الواجهة.
+- لا تضع القيم السرية في `.env.vercel` لأنه ملف متعقب؛ `.env.example` يسجل الأسماء فقط.
 
 الموقع المنشور:
 
@@ -1204,13 +1241,13 @@ appgprj_6a943a547ab08191833df2e3b01b43c3
 
 ## 36. ديون وملاحظات أمنية
 
-1. fallback bootstrap PIN موجود تاريخياً في المصدر لتسهيل أول تشغيل. قبل مشاركة واسعة، يجب الاعتماد على secret بيئي وعدم استخدام fallback معروف.
+1. Vercel لا يحوي fallback لكلمة المدير؛ يتطلب `BOOTSTRAP_ADMIN_PASSWORD` سراً من 4–12 رقماً عند أول تهيئة. ما زال Worker التاريخي لـSites يحتاج لاحقاً إلى إزالة fallback نفسه عند تدوير إعدادات Sites.
 2. التخزين المحلي يستخدم hash SHA-256 مع salt، بينما الإنتاج يستخدم PBKDF2 الأقوى؛ المحلي ليس نموذج أمان للإنتاج.
 3. لا يوجد CSRF token منفصل؛ SameSite=Strict + same-origin checks مستخدمة حالياً.
-4. R2 archive JSON يُحفظ كما هو؛ التشفير at rest من المنصة، ولا يوجد تشفير تطبيقي per-workspace.
+4. R2 وprivate Blob يحفظان archive JSON مع تشفير المنصة at rest، ولا يوجد تشفير تطبيقي per-workspace.
 5. لا يوجد audit log مستقل لعمليات إنشاء الرسائل أو التصدير حتى الآن.
 6. لا يوجد حذف انتقائي لرسالة من الواجهة حالياً.
-7. لا يوجد soft-delete أو version history للأرشيف؛ R2 يحتفظ بالكائن الحالي فقط بعد حذف القديم best-effort.
+7. لا يوجد soft-delete أو version history للأرشيف؛ R2/Blob يحتفظان بالكائن الحالي فقط بعد حذف القديم best-effort. في Vercel يمنع `archive_version` الكتابة المتزامنة لكنه لا يوفر استعادة نسخة تاريخية.
 
 أي تطوير أمني يجب ألا يكسر القدرة على فتح الأرشيف الحالي.
 
@@ -1374,8 +1411,8 @@ appgprj_6a943a547ab08191833df2e3b01b43c3
 - المشروع React/Vite صفحة واحدة.
 - `App.jsx` هو الواجهة والتدفقات.
 - `dataUtils.js` هو قلب سلامة البيانات.
-- DEV يستخدم IndexedDB؛ الإنتاج يستخدم Worker + D1/R2.
-- build Vercel الحالي يستخدم IndexedDB محلياً لكل متصفح، وليس تخزيناً مشتركاً.
+- DEV يستخدم IndexedDB؛ Sites يستخدم Worker + D1/R2؛ Vercel يستخدم Function + Neon/private Blob.
+- مستخدمو Vercel وأرشيفاته مشتركة عبر الأجهزة بعد ربط الخدمات والمتغيرات وإعادة النشر.
 - كل شركة archive مستقل.
 - XML timestamps لا تتغير.
 - البحث لا يخفي بقية المحادثات.
@@ -1387,7 +1424,7 @@ appgprj_6a943a547ab08191833df2e3b01b43c3
 - ثيم الموقع الافتراضي فاتح مع حفظ اختيار المستخدم لاحقاً.
 - export: PNG/PDF/ZIP/CSV مع تحديد متعدد وأسماء أرقام الدليل.
 - الموقع خاص.
-- الاختبارات الحالية 28/28.
+- الاختبارات الحالية 32/32.
 - لا تنشر public بلا موافقة.
 
 ---
@@ -1398,12 +1435,12 @@ appgprj_6a943a547ab08191833df2e3b01b43c3
 - الفروق بين نسخة العمل ونسخة المستخدم قبل إضافة هذا المستند: 0.
 - ملف PDF الأصلي: موجود، hash موثق أعلاه.
 - ملف XML الأصلي: موجود، hash موثق أعلاه.
-- `npm test`: 28/28 ناجح.
+- `npm test`: 32/32 ناجح.
 - `npm run build`: ناجح ويولد حزمة Sites المطلوبة.
 - `npm run build:vercel`: ناجح ويولد `dist/client` لنشر Vercel.
 - آخر نسخة تطبيق منشورة قبل هذا التوثيق: ناجحة وخاصة.
 
-هذا المستند لا يضمّن XML الحقيقي أو بيانات المستخدم الحساسة داخل Git. يصف مكان المصدر وبصمته، بينما بيانات الاستخدام الفعلية تُحفظ في IndexedDB محلياً (DEV وVercel الحالي) أو D1/R2 في الإنتاج الخادمي.
+هذا المستند لا يضمّن XML الحقيقي أو بيانات المستخدم الحساسة داخل Git. يصف مكان المصدر وبصمته، بينما بيانات الاستخدام الفعلية تُحفظ في IndexedDB محلياً (DEV)، أو D1/R2 في Sites، أو Neon/private Blob في Vercel.
 
 ---
 

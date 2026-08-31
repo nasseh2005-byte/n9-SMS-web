@@ -11,7 +11,10 @@ import {
   localUpdateUser,
 } from "./localWorkspaceStore.js";
 
-const localMode = import.meta.env.DEV || import.meta.env.VITE_N9_STORAGE_MODE === "local";
+const storageMode = import.meta.env.VITE_N9_STORAGE_MODE || "server";
+const localMode = import.meta.env.DEV || storageMode === "local";
+const vercelMode = !import.meta.env.DEV && storageMode === "vercel";
+const MAX_ARCHIVE_BYTES = 75 * 1024 * 1024;
 
 async function request(path, options = {}) {
   const response = await fetch(path, {
@@ -63,16 +66,44 @@ export async function createWorkspace(name) {
 }
 
 export function getWorkspaceArchive(workspaceId) {
-  return localMode ? localGetArchive(workspaceId) : request(`/api/workspaces/${encodeURIComponent(workspaceId)}/archive`);
+  if (localMode) return localGetArchive(workspaceId);
+  if (!vercelMode) return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/archive`);
+  return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/archive`).then(async (descriptor) => {
+    if (!descriptor.archiveUrl) return descriptor;
+    const response = await fetch(descriptor.archiveUrl, { cache: "no-store" });
+    if (!response.ok) throw new Error("تعذر تنزيل أرشيف الشركة من التخزين السحابي.");
+    const archive = await response.json();
+    if (!Array.isArray(archive?.messages)) throw new Error("الأرشيف السحابي غير صالح.");
+    return archive;
+  });
 }
 
-export function saveWorkspaceArchive(workspaceId, messages, sourceName) {
-  return localMode
-    ? localSaveArchive(workspaceId, messages, sourceName)
-    : request(`/api/workspaces/${encodeURIComponent(workspaceId)}/archive`, {
+export async function saveWorkspaceArchive(workspaceId, messages, sourceName) {
+  if (localMode) return localSaveArchive(workspaceId, messages, sourceName);
+  if (!vercelMode) {
+    return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/archive`, {
       method: "PUT",
       body: JSON.stringify({ messages, sourceName }),
     });
+  }
+
+  const archiveText = JSON.stringify({ sourceName, messages, savedAt: Date.now(), version: 2 });
+  const size = new TextEncoder().encode(archiveText).byteLength;
+  if (size > MAX_ARCHIVE_BYTES) throw new Error("حجم الأرشيف أكبر من الحد الآمن للحفظ السحابي.");
+  const target = await request(`/api/workspaces/${encodeURIComponent(workspaceId)}/archive/upload-url`, {
+    method: "POST",
+    body: JSON.stringify({ size }),
+  });
+  const upload = await fetch(target.uploadUrl, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: archiveText,
+  });
+  if (!upload.ok) throw new Error("تعذر رفع أرشيف الرسائل إلى التخزين السحابي. لم تتغير النسخة المحفوظة.");
+  return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/archive/complete`, {
+    method: "POST",
+    body: JSON.stringify({ archiveKey: target.archiveKey, expectedVersion: target.expectedVersion }),
+  });
 }
 
 export async function listUsers() {

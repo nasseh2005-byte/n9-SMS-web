@@ -2,8 +2,8 @@
 
 ## Final status
 
-- Automated tests: 28/28 passed.
-- Production build: passed.
+- Automated tests: 32/32 passed.
+- Sites and Vercel production builds: passed.
 - Browser console after a fresh reload and matching flow: 0 errors.
 - Desktop and 390 px mobile checks: no horizontal overflow.
 
@@ -59,7 +59,7 @@ Source: `C:\Users\win\Downloads\هاجديه (1).xml`
 - Manually created messages are validated, assigned stable unique ids, and saved to the active company's archive with exact user-entered send and receive/delivery timestamps.
 - Date separators cover the complete conversation, and the header reports the real total message count.
 - Global search keeps the complete result set and renders another 100 results on demand; no result is silently excluded.
-- Imported XML archives are saved in browser IndexedDB and restored after a page reload, including the selected conversation and initial smart matches.
+- Imported XML archives are saved in browser IndexedDB during local development. On Vercel they are serialized once, uploaded directly to private Vercel Blob with a short-lived PUT URL, validated server-side, and restored through an authorized short-lived GET URL.
 - The built-in ten-message dataset is visibly labeled as a sample so it cannot be mistaken for an incomplete imported archive.
 - Browser verification covered full sample-thread rendering, date separators, candidate filtering, newest/oldest sorting, and a fresh console with 0 errors.
 - The iPhone status bar and header no longer reuse message content as a backdrop, so message text and links cannot appear behind the Dynamic Island or contact controls.
@@ -69,13 +69,16 @@ Source: `C:\Users\win\Downloads\هاجديه (1).xml`
 
 - Every company has a separate workspace id, archive object, source filename, message count, and authorization membership.
 - Importing another XML file into the same company merges new SMS records and removes exact duplicates; switching companies reloads only that company's archive.
-- Hosted storage uses D1 for users, sessions, company metadata, and memberships, plus a separate R2 object for each company's current SMS archive.
+- The Sites deployment uses D1 for users, sessions, company metadata, and memberships, plus a separate R2 object for each company's current SMS archive.
+- The Vercel deployment uses Neon Postgres for the same shared account/workspace state and private Vercel Blob for each company's current archive. It never falls back silently to browser-local data when cloud configuration is missing.
 - The initial administrator is `nasseh`; its requested numeric bootstrap PIN is processed with PBKDF2-SHA-256 and a unique random salt rather than stored as plain text.
-- Authentication sessions use random opaque tokens whose hashes are stored server-side in D1. Browser cookies are HttpOnly, Secure, SameSite=Strict, and expire after seven days.
+- Authentication sessions use random opaque tokens whose hashes are stored server-side in D1 or Neon. Browser cookies are HttpOnly, Secure, SameSite=Strict, and expire after seven days.
 - Five incorrect password attempts trigger a 15-minute lockout.
 - Server endpoints repeat the company-membership authorization check and do not rely on hidden client controls.
 - Administrators can create users, stop/reactivate accounts, assign any combination of company workspaces, and replace a user's numeric password.
-- Local development and the current Vercel preview use isolated browser IndexedDB; shared multi-device persistence is provided only by the deployed D1/R2-backed version.
+- Local development alone uses isolated browser IndexedDB. Both hosted variants provide shared multi-device persistence: D1/R2 on Sites and Neon/private Blob on Vercel.
+- Vercel archive saves use an optimistic `archive_version`; if another device changes the same company during an upload, completion is rejected with 409 instead of overwriting the newer archive.
+- Vercel credentials and the numeric bootstrap password are server-only environment variables and are not bundled into client JavaScript.
 
 ## Welcome experience and phone presentation
 
