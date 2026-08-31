@@ -321,7 +321,7 @@ export function getMessageTimeline(message) {
         xmlDate ? { label: "تم الاستلام", at: xmlDate, source: "XML · date", estimated: false } : missingRow("تم الاستلام"),
         xmlDateSent
           ? {
-            label: "أرسلها المرسل",
+            label: "تم الإرسال",
             at: xmlDateSent,
             source: "XML · date_sent",
             estimated: false,

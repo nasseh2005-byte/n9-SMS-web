@@ -89,7 +89,7 @@ Source: `C:\Users\win\Downloads\هاجديه (1).xml`
 - Android and Huawei evidence previews now use a proportioned status bar, centered camera cutout, coherent device rim, and readable signal/Wi-Fi/network/battery grouping. Only the clock represents selected message/live/custom time; the other indicators are visual presentation.
 - Phone style and clock preferences are saved per device without modifying any imported XML timestamp.
 - Image and ZIP evidence exports receive the selected phone style and clock mode.
-- Evidence content is ordered as sender/direction/date, message, status timeline, type/sender metadata, and provenance. Imported XML, manually created records, and bundled samples have different visible provenance labels.
+- Android and Huawei evidence content now mirrors a practical native details screen: message preview, received/sent status, text-message type, and normal priority. Non-native sender cards, SMS badges, provenance panels, and N9 copy are excluded from the phone capture.
 - Browser measurement on a long real archive message confirmed the 393×852 export surface had `758px` client height and `758px` scroll height, so the complete evidence layout fit without hidden overflow.
 
 ## PDF and multi-selection export

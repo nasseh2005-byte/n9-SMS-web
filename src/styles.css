@@ -456,43 +456,31 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .composer-plus { width: 36px; height: 36px; border: 0; border-radius: 50%; background: #25292f; color: #dbe0e8; display: grid; place-items: center; }
 .composer-field { height: 38px; flex: 1; border-radius: 20px; background: #25292f; color: #9ea5af; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 13px; font-size: 9px; }
 
-.details-header { justify-content: space-between; }
+.details-header { height: 64px; justify-content: space-between; padding-inline: 12px; }
 .details-header strong { font-size: 15px; font-weight: 500; }
 .details-header-spacer { width: 34px; }
-.details-content { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 11px 42px; scrollbar-width: none; }
-.message-proof-card { min-height: 270px; border: 1px solid rgba(255,255,255,.055); border-radius: 20px; background: #111417; padding: 17px; display: grid; align-content: center; gap: 14px; }
-.proof-message-header { display: flex; align-items: center; gap: 9px; }
-.proof-sender-avatar { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 50%; background: #d8e8ff; color: #163a68; display: grid; place-items: center; font-size: 9px; font-weight: 700; }
-.proof-message-identity { min-width: 0; flex: 1; display: grid; gap: 2px; }
-.proof-message-identity strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 700; }
-.proof-message-identity small { color: #929ba7; font-size: 7px; }
-.proof-format-badge { min-width: 34px; height: 22px; padding: 0 7px; border: 1px solid #364250; border-radius: 11px; color: #a8c7fa; display: grid; place-items: center; font: 700 7px/1 "Segoe UI", sans-serif; letter-spacing: .05em; }
-.message-proof-bubble { width: 100%; padding: 15px; border-radius: 18px 18px 5px 18px; background: #293039; font-size: 12px; line-height: 1.8; text-align: right; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; box-shadow: 0 1px 0 rgba(255,255,255,.04) inset; }
-.proof-message-time { color: #8f98a4; font: 500 7px/1 "Segoe UI", sans-serif; text-align: left; direction: ltr; }
-.proof-section { margin-top: 14px; }
-.proof-section h4 { color: #8ab4f8; font-size: 10px; margin: 0 4px 8px; font-weight: 600; }
-.status-list { border: 1px solid rgba(255,255,255,.055); border-radius: 15px; overflow: hidden; background: #111417; }
-.status-list div { min-height: 57px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #23282e; }
-.status-list div:last-child { border-bottom: 0; }
-.status-list strong { font-size: 9.5px; font-weight: 600; }
-.status-list time { color: #c9ced5; font-size: 8px; line-height: 1.5; text-align: left; }
+.details-content { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 11px 42px; scrollbar-width: none; }
+.message-proof-card { min-height: 275px; border: 0; border-radius: 18px; background: #0b0c0f; padding: 22px 16px; display: grid; place-items: center; }
+.message-proof-bubble { width: fit-content; max-width: 80%; padding: 13px 16px; border-radius: 18px; background: #28282d; font-size: 12.5px; line-height: 1.75; text-align: right; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; box-shadow: none; }
+.proof-section { margin-top: 19px; }
+.proof-section h4 { color: #d4d1dc; font-size: 10.5px; margin: 0 16px 10px; font-weight: 600; }
+.status-list { border: 0; border-radius: 16px; overflow: hidden; background: transparent; display: grid; gap: 3px; }
+.status-list div { min-height: 62px; padding: 11px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; background: #0b0c0f; }
+.status-list div:first-child { border-radius: 16px 16px 4px 4px; }
+.status-list div:last-child { border-radius: 4px 4px 16px 16px; }
+.status-list strong { font-size: 10px; font-weight: 500; }
+.status-list time { color: #d4d1dc; font-size: 8.5px; line-height: 1.5; text-align: left; }
 .status-list .status-label { display: flex; align-items: center; gap: 7px; }
+.details-phone:not(.device-iphone) .status-marker { display: none; }
 .status-marker { width: 24px; height: 24px; flex: 0 0 24px; border-radius: 50%; background: rgba(138,180,248,.12); color: #8ab4f8; display: grid; place-items: center; }
 .status-list .status-label small { color: #8ab4f8; font-size: 6px; direction: ltr; text-align: right; }
 .status-list .status-label small.is-estimated { color: #e9c46a; }
 .status-list .has-warning .status-label small { color: #ffb4ab; }
 .status-list .is-missing .status-label small, .status-list .is-missing > time:last-child { color: #ffb4ab; }
-.proof-meta { padding: 0; }
-.proof-meta h4 { margin-inline: 4px; }
-.proof-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.proof-meta-grid > div { min-width: 0; min-height: 58px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.055); border-radius: 14px; background: #111417; display: grid; align-content: center; gap: 4px; }
-.proof-meta-grid span { color: #8f98a4; font-size: 7px; }
-.proof-meta-grid strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; font-weight: 600; }
-.proof-provenance { min-height: 52px; margin-top: 12px; padding: 9px 11px; border: 1px solid rgba(138,180,248,.16); border-radius: 14px; background: rgba(30,58,95,.18); color: #d5e5ff; display: flex; align-items: center; gap: 9px; }
-.proof-provenance-icon { width: 28px; height: 28px; flex: 0 0 28px; border-radius: 50%; background: rgba(138,180,248,.14); color: #a8c7fa; display: grid; place-items: center; }
-.proof-provenance > span:last-child { min-width: 0; display: grid; gap: 2px; }
-.proof-provenance strong { font-size: 8px; }
-.proof-provenance small { color: #9caec8; font-size: 6.5px; }
+.proof-details-list { margin: 21px 16px 6px; display: grid; gap: 20px; }
+.proof-details-list > div { display: grid; gap: 7px; }
+.proof-details-list span { color: #d4d1dc; font-size: 10.5px; font-weight: 600; }
+.proof-details-list strong { color: #f2eff6; font-size: 10px; font-weight: 400; }
 .android-nav { position: absolute; inset: auto 0 0; height: 28px; background: #0f1213; display: flex; align-items: center; justify-content: space-around; color: #c9cdd3; }
 .android-back-icon { transform: rotate(-90deg); }
 
@@ -620,23 +608,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .export-capture { position: fixed; left: -9999px; top: 0; width: 393px; height: 852px; pointer-events: none; }
 .export-capture > div, .export-capture .phone-screen { width: 393px; height: 852px; }
 .export-capture .phone-screen { border-radius: 0; }
-.capture-version .message-proof-card { min-height: 258px; padding: 18px; gap: 14px; }
-.capture-version .message-proof-bubble { font-size: 13.5px; line-height: 1.78; }
-.capture-version .proof-message-header strong { font-size: 11px; }
-.capture-version .proof-message-header small, .capture-version .proof-message-time { font-size: 8px; }
-.capture-version .proof-sender-avatar { width: 36px; height: 36px; flex-basis: 36px; font-size: 10px; }
-.capture-version .proof-format-badge { min-width: 38px; height: 24px; font-size: 8px; }
-.capture-version .details-header { height: 60px; }
+.capture-version .message-proof-card { min-height: 300px; padding: 24px 18px; }
+.capture-version .message-proof-bubble { font-size: 14px; line-height: 1.72; }
+.capture-version .details-header { height: 68px; }
 .capture-version .details-header strong { font-size: 17px; }
-.capture-version .details-content { padding: 14px 12px 42px; }
-.capture-version .status-list div { min-height: 56px; }
-.capture-version .status-list strong, .capture-version .proof-meta-grid strong { font-size: 10px; }
-.capture-version .status-list time, .capture-version .proof-meta-grid span { font-size: 8px; }
-.capture-version .proof-section h4 { font-size: 11px; }
-.capture-version .proof-meta-grid > div { min-height: 62px; }
-.capture-version .proof-provenance { min-height: 54px; }
-.capture-version .proof-provenance strong { font-size: 9px; }
-.capture-version .proof-provenance small { font-size: 7px; }
+.capture-version .details-content { padding: 9px 12px 42px; }
+.capture-version .status-list div { min-height: 66px; padding-inline: 19px; }
+.capture-version .status-list strong, .capture-version .proof-details-list strong { font-size: 11px; }
+.capture-version .status-list time { font-size: 10px; }
+.capture-version .proof-section h4, .capture-version .proof-details-list span { font-size: 12px; }
+.capture-version .proof-details-list { margin-top: 24px; gap: 22px; }
 
 .phone-screen.phone-light { background: #f7f9fc; color: #202124; }
 .phone-light .phone-statusbar { color: #202124; background: #f7f9fc; }
@@ -654,22 +635,27 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .phone-light .sms-bubble { background: #e8eaed; }
 .phone-light .sms-bubble-wrap.outgoing .sms-bubble { background: #d6e6ff; }
 .phone-light .composer-plus, .phone-light .composer-field { background: #e9edf3; color: #5f6978; }
-.phone-light .message-proof-card { border-color: #e1e6ed; background: #edf1f6; }
-.phone-light .proof-message-identity small, .phone-light .proof-message-time { color: #697386; }
-.phone-light .proof-format-badge { border-color: #cbd8e8; color: #0b57d0; background: #f8fbff; }
-.phone-light .message-proof-bubble { background: #ffffff; box-shadow: 0 1px 4px rgba(31,41,55,.1); }
-.phone-light .proof-section h4, .phone-light .status-list .status-label small { color: #0b57d0; }
+.phone-light .message-proof-card { background: #eceff3; }
+.phone-light .message-proof-bubble { background: #ffffff; box-shadow: 0 1px 3px rgba(31,41,55,.08); }
+.phone-light .proof-section h4, .phone-light .proof-details-list span { color: #3c424b; }
 .phone-light .status-list .status-label small.is-estimated { color: #8a6500; }
-.phone-light .status-list { background: #ffffff; border: 1px solid #e4e8ee; }
-.phone-light .status-list div { border-bottom-color: #e7eaf0; }
+.phone-light .status-list { background: transparent; border: 0; }
+.phone-light .status-list div { background: #fff; }
 .phone-light .status-list time { color: #4d5663; }
 .phone-light .status-marker { background: #e8f0fe; color: #0b57d0; }
-.phone-light .proof-meta-grid > div { border-color: #e4e8ee; background: #fff; }
-.phone-light .proof-meta-grid span { color: #697386; }
-.phone-light .proof-provenance { border-color: #d9e5f5; background: #edf4fc; color: #234f86; }
-.phone-light .proof-provenance-icon { background: #dbeafe; color: #0b57d0; }
-.phone-light .proof-provenance small { color: #647b98; }
+.phone-light .proof-details-list strong { color: #22262c; }
 .phone-light .android-nav { background: #edf1f5; color: #515966; }
+
+.device-android.details-phone,
+.device-android.details-phone .phone-statusbar,
+.device-android.details-phone .details-header,
+.device-android.details-phone .details-content { background: #1f1e23; }
+.device-android.details-phone .android-nav { background: #111115; }
+.device-android.details-phone.phone-light,
+.device-android.details-phone.phone-light .phone-statusbar,
+.device-android.details-phone.phone-light .details-header,
+.device-android.details-phone.phone-light .details-content { background: #f7f8fa; }
+.device-android.details-phone.phone-light .android-nav { background: #edf1f5; }
 
 .device-cutout, .ios-home-indicator { display: none; }
 .device-android .device-cutout,
@@ -743,8 +729,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .device-iphone .proof-section h4 { color: #8e8e93; font-size: 9px; font-weight: 500; }
 .device-iphone .status-list { border: 0; border-radius: 14px; background: #1c1c1e; }
 .device-iphone .status-list div { border-bottom-color: #38383a; }
-.device-iphone .proof-meta { padding: 12px 14px; border-radius: 14px; background: #1c1c1e; }
-.device-iphone .proof-meta h4:first-child { margin-top: 0; }
+.device-iphone .proof-details-list { padding: 12px 14px; border-radius: 14px; background: #1c1c1e; }
 .device-iphone.phone-light .device-cutout { background: #111; }
 .device-iphone.phone-light { background: #fff; }
 .device-iphone.phone-light .phone-conversation-header,
@@ -768,7 +753,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .device-iphone.phone-light .details-content { background: #f2f2f7; }
 .device-iphone.phone-light .message-proof-card,
 .device-iphone.phone-light .status-list,
-.device-iphone.phone-light .proof-meta { background: #fff; }
+.device-iphone.phone-light .proof-details-list { background: #fff; }
 .device-iphone.phone-light .message-proof-bubble { background: #e9e9eb; }
 .device-iphone.phone-light .status-list div { border-bottom-color: #e5e5ea; }
 
@@ -783,13 +768,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .device-huawei .sms-bubble-wrap.outgoing .sms-bubble { border-bottom-left-radius: 3px; background: #276fc2; }
 .device-huawei .composer-plus { border-radius: 11px; background: #2a2e35; }
 .device-huawei .composer-field { border-radius: 12px; background: #252930; }
+.device-huawei .message-proof-card { border-radius: 14px; background: #101115; }
 .device-huawei .message-proof-bubble { border-radius: 14px; background: #292d33; }
-.device-huawei .proof-section h4, .device-huawei .status-list .status-label small { color: #66a8f3; }
+.device-huawei .status-list div { background: #101115; }
+.device-huawei .proof-section h4 { color: #d7d9df; }
 .device-huawei.phone-light { background: #f2f3f5; }
 .device-huawei.phone-light .sms-bubble { background: #fff; color: #22262b; box-shadow: 0 1px 3px rgba(31,42,57,.08); }
 .device-huawei.phone-light .sms-bubble-wrap.outgoing .sms-bubble { background: #2878d2; color: #fff; box-shadow: none; }
 .device-huawei.phone-light .composer-plus, .device-huawei.phone-light .composer-field { background: #fff; color: #616b78; }
-.device-huawei.phone-light .message-proof-bubble { background: #fff; }
+.device-huawei.phone-light .message-proof-card { background: #e8eaee; }
+.device-huawei.phone-light .message-proof-bubble,
+.device-huawei.phone-light .status-list div { background: #fff; }
 
 .login-screen {
   width: 100vw;

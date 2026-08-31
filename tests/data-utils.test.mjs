@@ -194,6 +194,10 @@ test("builds a manual incoming message with exact logical timestamps", () => {
   assert.equal(message.type, "1");
   assert.equal(message.date - message.dateSent, 4 * 60 * 1000);
   assert.equal(message.sourceKind, "manual");
+  const timeline = getMessageTimeline(message);
+  assert.equal(timeline.rows[0].label, "تم الاستلام");
+  assert.equal(timeline.rows[1].label, "تم الإرسال");
+  assert.equal(timeline.rows[0].at - timeline.rows[1].at, 4 * 60 * 1000);
 });
 
 test("manual outgoing messages keep their delivery time", () => {
