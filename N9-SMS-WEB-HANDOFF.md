@@ -1,7 +1,7 @@
 # N9 SMS Web — المرجع الرئيسي وتسليم المشروع إلى Codex آخر
 
-> آخر تحديث توثيقي: 30 أغسطس 2026 — توقيت الرياض  
-> حالة التطبيق: يعمل محلياً ومنشور بصفة خاصة، والاختبارات الآلية الحالية ناجحة 20/20.  
+> آخر تحديث توثيقي: 31 أغسطس 2026 — توقيت الرياض
+> حالة التطبيق: يعمل محلياً، وله نشر Sites خاص، ومجهز لنشر Vercel محلي البيانات؛ الاختبارات الآلية الحالية ناجحة 22/22.
 > هذا الملف هو نقطة البداية لأي مطور أو وكيل Codex يستلم المشروع لاحقاً.
 
 ---
@@ -124,7 +124,8 @@
 
 - البيانات العملية ليست `localStorage` فقط.
 - النسخة المنشورة تستخدم D1 وR2.
-- IndexedDB هو بديل تطوير محلي فقط.
+- IndexedDB هو بديل تطوير محلي، ويستخدمه أيضاً build Vercel الحالي كنسخة شخصية محلية في المتصفح.
+- وضع Vercel الحالي لا يحقق المشاركة بين الأجهزة ولا يمثل بوابة صلاحيات خادمية؛ النسخة المشتركة تبقى Worker + D1/R2 إلى أن يضاف backend متوافق مع Vercel.
 
 ---
 
@@ -208,7 +209,7 @@
 ```mermaid
 flowchart LR
     U[المستخدم] --> UI[React + Vite UI]
-    UI -->|DEV| IDX[(IndexedDB محلي)]
+    UI -->|DEV أو Vercel browser-local| IDX[(IndexedDB محلي)]
     UI -->|الإنتاج /api| W[Cloudflare-compatible Worker]
     W --> D1[(D1: users/workspaces/sessions)]
     W --> R2[(R2: JSON archive per workspace)]
@@ -221,7 +222,7 @@ flowchart LR
 
 ### قرار مهم
 
-الواجهة لا تتعامل مباشرة مع D1 أو R2. كل ذلك يمر عبر `workspaceApi.js`، الذي يختار تلقائياً بين التخزين المحلي في وضع Vite DEV وبين `/api` في الإنتاج.
+الواجهة لا تتعامل مباشرة مع D1 أو R2. كل ذلك يمر عبر `workspaceApi.js`، الذي يختار التخزين المحلي في وضع Vite DEV أو عندما تكون `VITE_N9_STORAGE_MODE=local`، ويستخدم `/api` في بناء الإنتاج الخادمي. يضبط build Vercel المتغير المحلي عبر `.env.vercel`.
 
 ---
 
@@ -239,8 +240,9 @@ flowchart LR
 | ZIP | `jszip` |
 | تخزين الإنتاج المنظم | Cloudflare D1 |
 | تخزين أرشيف الرسائل | Cloudflare R2 |
-| تخزين التطوير | IndexedDB |
-| الاستضافة | OpenAI Sites |
+| تخزين التطوير وVercel الحالي | IndexedDB |
+| الاستضافة الخادمية | OpenAI Sites |
+| معاينة Vercel | Vite SPA + IndexedDB محلي في كل متصفح |
 | الاختبارات | Node test runner |
 
 لا توجد حاجة حالياً إلى React Router أو مكتبة state خارجية؛ التطبيق صفحة واحدة وحالته المركزية في `App.jsx`.
@@ -272,7 +274,8 @@ n9-sms-web/
 │  └─ localStore.js                # أرشيفات الرسائل المحلية في IndexedDB
 ├─ tests/
 │  ├─ data-utils.test.mjs          # اختبارات البيانات والمطابقة والمنشئ
-│  └─ sites-worker.test.mjs        # اختبارات auth/static fallback/package
+│  ├─ sites-worker.test.mjs        # اختبارات auth/static fallback/package
+│  └─ vercel-config.test.mjs       # اختبارات إعداد build ومسارات Vercel
 ├─ worker/
 │  └─ index.js                     # API + auth + D1/R2 + static assets
 ├─ AGENTS.md                       # قرارات ملزمة لأي وكيل
@@ -280,6 +283,9 @@ n9-sms-web/
 ├─ design-qa.md                    # سجل QA بصري تاريخي
 ├─ qa-numbers.csv                  # رقمان مرجعيان للاختبار
 ├─ N9-SMS-WEB-HANDOFF.md           # هذا المستند
+├─ README.md                        # تشغيل سريع ونشر GitHub/Vercel
+├─ .env.vercel                     # يفعّل التخزين المحلي في build Vercel
+├─ vercel.json                     # build/output/SPA rewrite لـVercel
 ├─ package.json
 ├─ vite.config.mjs
 └─ index.html
@@ -950,8 +956,8 @@ npm test
 الحالة الموثقة عند إنشاء هذا الملف:
 
 ```text
-20 tests
-20 pass
+22 tests
+22 pass
 0 fail
 ```
 
@@ -981,6 +987,12 @@ npm test
 - عدم تحويل API مفقود أو POST غير صالح إلى app shell.
 - وجود ملفات Sites المطلوبة بعد build.
 
+### تغطية `vercel-config.test.mjs`
+
+- استخدام `npm run build:vercel` ونشر `dist/client`.
+- وجود SPA rewrite إلى `index.html`.
+- تفعيل `VITE_N9_STORAGE_MODE=local` في `.env.vercel` وربطه ببوابة التخزين.
+
 ### ما لا تغطيه الاختبارات الآلية بالكامل
 
 - DOM بصري لكل الثيمات.
@@ -1000,6 +1012,7 @@ npm install
 npm run dev
 npm test
 npm run build
+npm run build:vercel
 ```
 
 اختبارات محددة:
@@ -1019,17 +1032,28 @@ dist/.openai/hosting.json
 
 `prepare-sites-build.mjs` مسؤول عن نسخ Worker وhosting metadata إلى `dist` بعد Vite build.
 
+أما `npm run build:vercel` فيبني Vite بوضع `vercel` وينشر `dist/client` فقط وفق `vercel.json`.
+
 ---
 
 ## 33. الاستضافة الحالية
 
-مستودع المصدر الخاص على GitHub:
+مستودع المصدر الحالي على GitHub:
 
 ```text
-https://github.com/Taksimpoint/n9-sms-web
+https://github.com/nasseh2005-byte/n9-SMS-web
 ```
 
-الفرع الافتراضي `main`، والمستودع `PRIVATE`، والنسخة المحلية مرتبطة به عبر remote باسم `origin`.
+الفرع الافتراضي `main`، والنسخة المحلية مرتبطة به عبر remote باسم `origin`. المستودع ظاهر للعامة وقت هذا التحديث، ولذلك يحظر وضع XML/Excel/PDF الحقيقي أو بيانات العملاء أو أي secret فيه. يوجد remote تاريخي باسم `origin-previous` للمصدر السابق ولا ينبغي الدفع إليه بالخطأ.
+
+### ملف نشر Vercel
+
+- استيراد المستودع في Vercel يقرأ `vercel.json`.
+- أمر البناء: `npm run build:vercel`.
+- مجلد النشر: `dist/client`.
+- جميع مسارات SPA يعاد توجيهها إلى `index.html`.
+- البيانات والحسابات في هذه النسخة محفوظة في IndexedDB داخل المتصفح نفسه؛ لا تتزامن بين الأجهزة، ولا ترفع رسائل SMS إلى GitHub أو Vercel.
+- للحصول على مستخدمين وصلاحيات مشتركة على أجهزة متعددة في Vercel، يلزم backend وقاعدة بيانات خادمية قبل اعتماد النسخة تشغيلياً.
 
 الموقع المنشور:
 
@@ -1295,6 +1319,7 @@ appgprj_6a943a547ab08191833df2e3b01b43c3
 - `App.jsx` هو الواجهة والتدفقات.
 - `dataUtils.js` هو قلب سلامة البيانات.
 - DEV يستخدم IndexedDB؛ الإنتاج يستخدم Worker + D1/R2.
+- build Vercel الحالي يستخدم IndexedDB محلياً لكل متصفح، وليس تخزيناً مشتركاً.
 - كل شركة archive مستقل.
 - XML timestamps لا تتغير.
 - البحث لا يخفي بقية المحادثات.
@@ -1305,7 +1330,7 @@ appgprj_6a943a547ab08191833df2e3b01b43c3
 - phone themes: Android/Huawei/iPhone.
 - export: PNG/ZIP/CSV.
 - الموقع خاص.
-- الاختبارات الحالية 20/20.
+- الاختبارات الحالية 22/22.
 - لا تنشر public بلا موافقة.
 
 ---
@@ -1316,10 +1341,12 @@ appgprj_6a943a547ab08191833df2e3b01b43c3
 - الفروق بين نسخة العمل ونسخة المستخدم قبل إضافة هذا المستند: 0.
 - ملف PDF الأصلي: موجود، hash موثق أعلاه.
 - ملف XML الأصلي: موجود، hash موثق أعلاه.
-- `npm test`: 19/19 ناجح.
+- `npm test`: 22/22 ناجح.
+- `npm run build`: ناجح ويولد حزمة Sites المطلوبة.
+- `npm run build:vercel`: ناجح ويولد `dist/client` لنشر Vercel.
 - آخر نسخة تطبيق منشورة قبل هذا التوثيق: ناجحة وخاصة.
 
-هذا المستند لا يضمّن XML الحقيقي أو بيانات المستخدم الحساسة داخل Git. يصف مكان المصدر وبصمته، بينما بيانات الاستخدام الفعلية تُحفظ في IndexedDB محلياً أو D1/R2 في الإنتاج.
+هذا المستند لا يضمّن XML الحقيقي أو بيانات المستخدم الحساسة داخل Git. يصف مكان المصدر وبصمته، بينما بيانات الاستخدام الفعلية تُحفظ في IndexedDB محلياً (DEV وVercel الحالي) أو D1/R2 في الإنتاج الخادمي.
 
 ---
 

@@ -67,7 +67,7 @@
 
 ## Build Verification
 
-- `npm test`: passed, 20/20 tests.
+- `npm test`: passed, 22/22 tests.
 - `npm run build`: passed; emitted `dist/client/index.html`, `dist/server/index.js`, and `dist/.openai/hosting.json`.
 - `npm run test:sites`: passed, 5/5 tests.
 

@@ -11,7 +11,7 @@ import {
   localUpdateUser,
 } from "./localWorkspaceStore.js";
 
-const localMode = import.meta.env.DEV;
+const localMode = import.meta.env.DEV || import.meta.env.VITE_N9_STORAGE_MODE === "local";
 
 async function request(path, options = {}) {
   const response = await fetch(path, {

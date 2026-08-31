@@ -14,6 +14,8 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 
 - SMS archives are separated into named company workspaces; switching companies must never mix messages, matching results, or imported source metadata.
 - Company data and user authorization must persist across devices through server-backed storage. Browser storage is only a local development fallback.
+- The GitHub/Vercel profile is intentionally a browser-local preview: `npm run build:vercel` sets `VITE_N9_STORAGE_MODE=local` and publishes `dist/client`. It must not be described as shared, cross-device, or server-secured until a Vercel-compatible database and server authentication layer are added.
+- Never commit real customer XML, Excel, PDF, exported evidence, credentials, tokens, or browser databases to GitHub. The Vercel browser-local profile must not upload SMS archives to GitHub or Vercel.
 - The first administrator is `nasseh` with the requested numeric bootstrap password; additional users receive explicit company assignments.
 - Preserve the existing Google Messages-inspired visual language while extending it with company and user-management surfaces.
 - The pre-login experience is a polished bilingual Arabic/English landing and sign-in surface with its own light/dark presentation.

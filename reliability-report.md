@@ -2,7 +2,7 @@
 
 ## Final status
 
-- Automated tests: 19/19 passed.
+- Automated tests: 22/22 passed.
 - Production build: passed.
 - Browser console after a fresh reload and matching flow: 0 errors.
 - Desktop and 390 px mobile checks: no horizontal overflow.
@@ -72,7 +72,7 @@ Source: `C:\Users\win\Downloads\هاجديه (1).xml`
 - Five incorrect password attempts trigger a 15-minute lockout.
 - Server endpoints repeat the company-membership authorization check and do not rely on hidden client controls.
 - Administrators can create users, stop/reactivate accounts, assign any combination of company workspaces, and replace a user's numeric password.
-- Local development uses an isolated IndexedDB fallback so the preview remains usable; shared multi-device persistence is provided by the deployed D1/R2-backed version.
+- Local development and the current Vercel preview use isolated browser IndexedDB; shared multi-device persistence is provided only by the deployed D1/R2-backed version.
 
 ## Welcome experience and phone presentation
 
