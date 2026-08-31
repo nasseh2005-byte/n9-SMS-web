@@ -214,10 +214,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .search-result-top small { flex: 0 0 auto; color: #7f8998; font-size: 7px; }
 .search-result-snippet { color: #5f6978; font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search-empty { padding: 15px 10px; border-radius: 12px; background: #f7f8fa; color: #7b8491; text-align: center; font-size: 9px; }
-.search-more-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px 2px 7px; }
+.search-more-actions { display: grid; grid-template-columns: 1fr; gap: 6px; padding: 4px 2px 7px; }
 .search-more-actions button { min-height: 32px; border: 1px solid #d8e1ed; border-radius: 10px; background: #f7f9fc; color: #315f9f; font-size: 8px; font-weight: 700; cursor: pointer; }
 .search-more-actions button:hover { background: #edf4ff; }
 .all-conversations-divider { margin: 6px 5px 1px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; color: #7b8492; font-size: 9px; font-weight: 700; }
+.list-window-control { width: calc(100% - 10px); min-height: 43px; margin: 7px 5px; padding: 9px 12px; border: 1px solid #d7e1ee; border-radius: 13px; background: #f5f8fc; color: #315f9f; display: grid; place-items: center; gap: 3px; font-size: 9px; font-weight: 800; cursor: pointer; }
+.list-window-control:hover { border-color: #a8c2ea; background: #edf4ff; }
+.list-window-control small { color: #7b8492; font-size: 7px; font-weight: 500; }
+.list-window-control.compact { width: 100%; min-height: 34px; margin: 2px 0 0; }
 
 .conversation-item {
   position: relative;
@@ -424,6 +428,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .thread-search-count { direction: ltr; font: 600 7px/1 "Segoe UI", sans-serif; color: #858d99; }
 
 .thread-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 12px 8px; display: flex; flex-direction: column; gap: 8px; scrollbar-width: none; }
+.thread-window-control { align-self: center; max-width: 90%; padding: 7px 12px; border: 1px solid rgba(138,180,248,.3); border-radius: 13px; background: rgba(138,180,248,.1); color: #b9d2fb; display: grid; gap: 2px; text-align: center; font-size: 8px; font-weight: 700; cursor: pointer; }
+.thread-window-control:hover { background: rgba(138,180,248,.17); }
+.thread-window-control small { color: #8e9aad; font-size: 6px; font-weight: 500; }
+.thread-window-summary { align-self: center; max-width: 90%; color: #858d99; text-align: center; font-size: 6.5px; line-height: 1.5; }
 .thread-message-entry { display: contents; }
 .thread-empty-state { margin: auto; padding: 20px; color: #8f97a3; text-align: center; display: grid; justify-items: center; gap: 6px; }
 .thread-empty-state strong { color: #d9dde3; font-size: 10px; }
@@ -586,6 +594,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .phone-light .thread-search-row input::placeholder { color: #7b8491; }
 .phone-light .thread-empty-state { color: #737d8b; }
 .phone-light .thread-empty-state strong { color: #303642; }
+.phone-light .thread-window-control { border-color: #c8d8ed; background: #edf4fc; color: #315f9f; }
+.phone-light .thread-window-control small, .phone-light .thread-window-summary { color: #697386; }
 .phone-light .phone-contact small, .phone-light .sms-bubble-wrap small, .phone-light .date-chip { color: #697386; }
 .phone-light .date-chip { background: #e8edf4; }
 .phone-light .sms-bubble { background: #e8eaed; }
@@ -1000,6 +1010,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .theme-dark .search-empty { background: #25292f; }
 .theme-dark .search-more-actions button { background: #292f36; border-color: #414a55; color: #b9d2f8; }
 .theme-dark .search-more-actions button:hover { background: #333b45; }
+.theme-dark .list-window-control { background: #292f36; border-color: #414a55; color: #b9d2f8; }
+.theme-dark .list-window-control:hover { background: #333b45; border-color: #5579aa; }
+.theme-dark .list-window-control small { color: #9da6b3; }
 .theme-dark .terms-field textarea { background: #272c33; border-color: #414853; color: #edf1f7; }
 .theme-dark .selection-mode { background: #292e35; }
 .theme-dark .selection-mode button { color: #aab2be; }

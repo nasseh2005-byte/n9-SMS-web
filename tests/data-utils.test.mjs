@@ -43,6 +43,11 @@ test("filters one conversation by body text, contact name, or number", () => {
   assert.equal(filterConversationMessages(messages, "", conversation).length, 2);
 });
 
+test("reuses the complete thread when conversation search is empty", () => {
+  const messages = Array.from({ length: 10_000 }, (_, index) => ({ id: String(index), body: `رسالة ${index}` }));
+  assert.equal(filterConversationMessages(messages, ""), messages);
+});
+
 test("expands scientific notation and rejects dates and fractional amounts", () => {
   assert.equal(expandScientificNotation("1.523486575E+9"), "1523486575");
   assert.equal(expandScientificNotation("2E+6"), "2000000");

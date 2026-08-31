@@ -21,6 +21,7 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 - The pre-login experience is a polished bilingual Arabic/English landing and sign-in surface with its own light/dark presentation.
 - Phone evidence supports three explicitly selectable visual systems: Google Android, Huawei EMUI, and Apple iPhone.
 - Search inside an open conversation accepts arbitrary message text, sender/contact names, and numbers without changing the global archive search, matching state, or XML data.
+- Large archives must remain responsive without hiding data: the phone renders message batches of 160 with explicit older/newer controls, conversation lists render in batches of 200, match groups in batches of 40, and candidates in batches of 80. Search and matching still operate over the complete archive; never replace batching with a hard result cutoff.
 - The Apple iPhone preview follows recognizable iMessage anatomy with a realistic device frame, status bar, conversation header, message bubbles, search surface, composer, and light/dark treatment.
 - For the Apple iPhone conversation view, use the user-supplied iMessage screenshot as the visual source of truth: mirrored Arabic status bar, large centered contact avatar/name pill, left-aligned incoming gray bubbles with tails, blue auto-detected links/numbers, and timestamp separators between message groups.
 - The phone status-bar clock can use the original SMS time, the live current time, or a user-entered time; this is a display preference and must not mutate XML timestamps.

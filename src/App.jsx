@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Icon from "@mdi/react";
 import {
   mdiAlertCircleOutline,
@@ -75,30 +75,37 @@ import {
 } from "./workspaceApi.js";
 
 const initialsPalette = ["#d8e8ff", "#e4ddff", "#d8f5e5", "#ffe3d8", "#f5df9f"];
+const THREAD_RENDER_BATCH = 160;
+const CONVERSATION_RENDER_BATCH = 200;
+const MATCH_GROUP_RENDER_BATCH = 40;
+const MATCH_CANDIDATE_RENDER_BATCH = 80;
+const timeFormatter = new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
+  hour: "numeric",
+  minute: "2-digit",
+});
+const dateFormatter = new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+const shortDateFormatter = new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
+  month: "short",
+  day: "numeric",
+});
 
 function formatTime(value) {
   if (!parseXmlTimestamp(value)) return "—";
-  return new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return timeFormatter.format(new Date(value));
 }
 
 function formatDate(value) {
   if (!parseXmlTimestamp(value)) return "غير متوفر";
-  return new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(new Date(value));
+  return dateFormatter.format(new Date(value));
 }
 
 function formatShortDate(value) {
   if (!parseXmlTimestamp(value)) return "—";
-  return new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
-    month: "short",
-    day: "numeric",
-  }).format(new Date(value));
+  return shortDateFormatter.format(new Date(value));
 }
 
 function formatIphoneThreadStamp(value) {
@@ -250,7 +257,7 @@ function StatusBar({ clockMode = "message", customTime = "09:41", deviceStyle = 
   );
 }
 
-function LinkifiedBody({ body, deviceStyle = "android" }) {
+const LinkifiedBody = memo(function LinkifiedBody({ body, deviceStyle = "android" }) {
   const pattern = deviceStyle === "iphone"
     ? /(https?:\/\/\S+|[0-9٠-٩۰-۹]{7,})/g
     : /(https?:\/\/\S+)/g;
@@ -258,19 +265,44 @@ function LinkifiedBody({ body, deviceStyle = "android" }) {
   return parts.map((part, index) => (/^https?:\/\//.test(part) || (deviceStyle === "iphone" && /^[0-9٠-٩۰-۹]{7,}$/.test(part)))
     ? <span className="message-link" key={`${part}-${index}`}>{part}</span>
     : <span key={`${part}-${index}`}>{part}</span>);
-}
+});
 
 function ConversationPhone({ clockMode, conversation, customTime, deviceStyle, selectedId, onSelect, theme }) {
   const allMessages = conversation?.messages || [];
   const threadRef = useRef(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [threadQuery, setThreadQuery] = useState("");
+  const [messageWindow, setMessageWindow] = useState({ key: "", start: 0, end: THREAD_RENDER_BATCH });
+  const deferredThreadQuery = useDeferredValue(threadQuery);
   const visibleMessages = useMemo(
-    () => filterConversationMessages(allMessages, threadQuery, conversation),
-    [allMessages, conversation, threadQuery],
+    () => filterConversationMessages(allMessages, deferredThreadQuery, conversation),
+    [allMessages, conversation, deferredThreadQuery],
   );
-  const selectedInThread = allMessages.find((message) => message.id === selectedId);
+  const selectedInThread = useMemo(
+    () => allMessages.find((message) => message.id === selectedId),
+    [allMessages, selectedId],
+  );
   const phoneTime = selectedInThread?.date || allMessages.at(-1)?.date;
+  const windowKey = `${conversation?.address || ""}\u241f${deferredThreadQuery}`;
+  const defaultWindow = {
+    start: Math.max(0, visibleMessages.length - THREAD_RENDER_BATCH),
+    end: visibleMessages.length,
+  };
+  let renderStart = messageWindow.key === windowKey ? Math.min(messageWindow.start, visibleMessages.length) : defaultWindow.start;
+  let renderEnd = messageWindow.key === windowKey ? Math.min(messageWindow.end, visibleMessages.length) : defaultWindow.end;
+  if (renderEnd <= renderStart && visibleMessages.length) {
+    renderStart = defaultWindow.start;
+    renderEnd = defaultWindow.end;
+  }
+  const selectedVisibleIndex = visibleMessages.findIndex((message) => message.id === selectedId);
+  if (messageWindow.key !== windowKey && selectedVisibleIndex >= 0 && (selectedVisibleIndex < renderStart || selectedVisibleIndex >= renderEnd)) {
+    renderStart = Math.max(0, Math.min(
+      selectedVisibleIndex - Math.floor(THREAD_RENDER_BATCH / 2),
+      visibleMessages.length - THREAD_RENDER_BATCH,
+    ));
+    renderEnd = Math.min(visibleMessages.length, renderStart + THREAD_RENDER_BATCH);
+  }
+  const renderedMessages = visibleMessages.slice(renderStart, renderEnd);
 
   useEffect(() => {
     setSearchOpen(false);
@@ -286,7 +318,25 @@ function ConversationPhone({ clockMode, conversation, customTime, deviceStyle, s
       if (selectedNode) selectedNode.scrollIntoView({ block: "center" });
       else container.scrollTop = threadQuery ? 0 : container.scrollHeight;
     });
-  }, [conversation?.address, selectedId, threadQuery]);
+  }, [conversation?.address, deferredThreadQuery, selectedId]);
+
+  function revealOlderMessages() {
+    const nextEnd = renderStart;
+    setMessageWindow({
+      key: windowKey,
+      start: Math.max(0, nextEnd - THREAD_RENDER_BATCH),
+      end: nextEnd,
+    });
+  }
+
+  function revealNewerMessages() {
+    const nextStart = renderEnd;
+    setMessageWindow({
+      key: windowKey,
+      start: nextStart,
+      end: Math.min(visibleMessages.length, nextStart + THREAD_RENDER_BATCH),
+    });
+  }
 
   return (
     <div className={`phone-screen conversation-phone device-${deviceStyle} ${theme === "light" ? "phone-light" : ""}`} dir="rtl">
@@ -343,15 +393,27 @@ function ConversationPhone({ clockMode, conversation, customTime, deviceStyle, s
             <span>جرّب اسمًا آخر أو كلمة من نص الرسالة.</span>
           </div>
         )}
-        {visibleMessages.map((message, index) => {
+        {renderStart > 0 && (
+          <button className="thread-window-control" onClick={revealOlderMessages} type="button">
+            عرض دفعة أقدم ({Math.min(THREAD_RENDER_BATCH, renderStart).toLocaleString("ar-SA")} رسالة)
+            <small>{renderStart.toLocaleString("ar-SA")} رسالة متاحة قبل هذه الدفعة</small>
+          </button>
+        )}
+        {visibleMessages.length > THREAD_RENDER_BATCH && (
+          <div className="thread-window-summary">
+            عرض {(renderEnd - renderStart).toLocaleString("ar-SA")} من {visibleMessages.length.toLocaleString("ar-SA")} رسالة للحفاظ على سرعة الهاتف
+          </div>
+        )}
+        {renderedMessages.map((message, index) => {
           const incoming = message.type !== "2";
-          const previousMessage = visibleMessages[index - 1];
+          const absoluteIndex = renderStart + index;
+          const previousMessage = visibleMessages[absoluteIndex - 1];
           const currentDay = parseXmlTimestamp(message.date) ? new Date(message.date).toDateString() : "missing";
           const previousDay = parseXmlTimestamp(previousMessage?.date) ? new Date(previousMessage.date).toDateString() : "missing";
           const timeGap = parseXmlTimestamp(message.date) && parseXmlTimestamp(previousMessage?.date)
             ? Number(message.date) - Number(previousMessage.date)
             : 0;
-          const showDate = index === 0
+          const showDate = absoluteIndex === 0
             || currentDay !== previousDay
             || (deviceStyle === "iphone" && timeGap >= 10 * 60 * 1000);
           return (
@@ -369,6 +431,12 @@ function ConversationPhone({ clockMode, conversation, customTime, deviceStyle, s
             </div>
           );
         })}
+        {renderEnd < visibleMessages.length && (
+          <button className="thread-window-control" onClick={revealNewerMessages} type="button">
+            عرض دفعة أحدث ({Math.min(THREAD_RENDER_BATCH, visibleMessages.length - renderEnd).toLocaleString("ar-SA")} رسالة)
+            <small>{(visibleMessages.length - renderEnd).toLocaleString("ar-SA")} رسالة متاحة بعد هذه الدفعة</small>
+          </button>
+        )}
       </div>
       <div className="composer-row">
         <button aria-label={deviceStyle === "iphone" ? "الكاميرا" : "إضافة"} className="composer-plus" type="button"><Icon path={deviceStyle === "iphone" ? mdiCameraOutline : mdiPlus} size={deviceStyle === "iphone" ? 0.92 : 1.12} /></button>
@@ -795,6 +863,40 @@ function mergeMessageArchives(currentMessages, importedMessages) {
   return sortMessages(merged);
 }
 
+const comparableMessageCache = new WeakMap();
+
+function getComparableMessageText(message) {
+  if (!message || typeof message !== "object") return "";
+  const cached = comparableMessageCache.get(message);
+  if (cached !== undefined) return cached;
+  const normalized = normalizeComparable(`${message.contactName || ""} ${message.address || ""} ${message.body || ""}`);
+  comparableMessageCache.set(message, normalized);
+  return normalized;
+}
+
+function indexMatchesByTerm(terms, matches) {
+  const index = new Map(terms.map((term) => [term, []]));
+  for (const match of matches) {
+    for (const term of match.terms) index.get(term)?.push(match);
+  }
+  return index;
+}
+
+function sortSmartCandidates(candidates, term) {
+  return [...candidates].sort((a, b) => (
+    (b.scoreByTerm?.[term] || 0) - (a.scoreByTerm?.[term] || 0)
+    || Number(b.message.date) - Number(a.message.date)
+  ));
+}
+
+function buildRecommendedSelections(terms, matches) {
+  const indexed = indexMatchesByTerm(terms, matches);
+  return Object.fromEntries(terms.flatMap((term) => {
+    const recommendation = sortSmartCandidates(indexed.get(term) || [], term)[0];
+    return recommendation ? [[term, recommendation.message.id]] : [];
+  }));
+}
+
 export function App() {
   const [messages, setMessages] = useState([]);
   const [sourceName, setSourceName] = useState("لا يوجد ملف بعد");
@@ -802,6 +904,7 @@ export function App() {
   const [selectedMessageId, setSelectedMessageId] = useState("");
   const [query, setQuery] = useState("");
   const [searchLimit, setSearchLimit] = useState(100);
+  const [conversationLimit, setConversationLimit] = useState(CONVERSATION_RENDER_BATCH);
   const [activeNav, setActiveNav] = useState("messages");
   const [previewMode, setPreviewMode] = useState("details");
   const [matchInput, setMatchInput] = useState(sampleMatchTerms.join("\n"));
@@ -811,6 +914,8 @@ export function App() {
   const [selectionMode, setSelectionMode] = useState("auto");
   const [candidateQuery, setCandidateQuery] = useState("");
   const [candidateSort, setCandidateSort] = useState("smart");
+  const [matchGroupLimit, setMatchGroupLimit] = useState(MATCH_GROUP_RENDER_BATCH);
+  const [candidateLimits, setCandidateLimits] = useState({});
   const [theme, setTheme] = useState("dark");
   const [deviceStyle, setDeviceStyle] = useState(() => localStorage.getItem("n9-phone-style") || "android");
   const [clockMode, setClockMode] = useState(() => localStorage.getItem("n9-phone-clock-mode") || "message");
@@ -840,15 +945,17 @@ export function App() {
     () => workspaces.find((workspace) => workspace.id === activeWorkspaceId) || workspaces[0] || null,
     [activeWorkspaceId, workspaces],
   );
+  const deferredQuery = useDeferredValue(query);
+  const deferredCandidateQuery = useDeferredValue(candidateQuery);
   const conversations = useMemo(() => groupMessages(messages), [messages]);
   const searchResults = useMemo(() => {
-    const normalized = normalizeComparable(query);
+    const normalized = normalizeComparable(deferredQuery);
     if (!normalized) return [];
     return messages
-      .filter((message) => normalizeComparable(`${message.contactName} ${message.address} ${message.body}`).includes(normalized))
+      .filter((message) => getComparableMessageText(message).includes(normalized))
       .sort((a, b) => Number(b.date) - Number(a.date))
       ;
-  }, [messages, query]);
+  }, [deferredQuery, messages]);
 
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation.address === selectedAddress) || conversations[0],
@@ -861,18 +968,17 @@ export function App() {
     [messages, selectedConversation, selectedMessageId],
   );
 
+  const matchesByTerm = useMemo(() => indexMatchesByTerm(matchTerms, matches), [matchTerms, matches]);
   const matchGroups = useMemo(() => matchTerms.map((term) => {
-    const smartCandidates = matches
-      .filter((match) => match.terms.includes(term))
-      .sort((a, b) => (b.scoreByTerm?.[term] || 0) - (a.scoreByTerm?.[term] || 0) || Number(b.message.date) - Number(a.message.date));
+    const smartCandidates = sortSmartCandidates(matchesByTerm.get(term) || [], term);
     const candidates = [...smartCandidates].sort((a, b) => {
       if (candidateSort === "newest") return Number(b.message.date) - Number(a.message.date);
       if (candidateSort === "oldest") return Number(a.message.date) - Number(b.message.date);
       return (b.scoreByTerm?.[term] || 0) - (a.scoreByTerm?.[term] || 0) || Number(b.message.date) - Number(a.message.date);
     });
-    const normalizedCandidateQuery = normalizeComparable(candidateQuery);
+    const normalizedCandidateQuery = normalizeComparable(deferredCandidateQuery);
     const visibleCandidates = normalizedCandidateQuery
-      ? candidates.filter(({ message }) => normalizeComparable(`${message.contactName} ${message.address} ${message.body}`).includes(normalizedCandidateQuery))
+      ? candidates.filter(({ message }) => getComparableMessageText(message).includes(normalizedCandidateQuery))
       : candidates;
     return {
       term,
@@ -880,7 +986,7 @@ export function App() {
       visibleCandidates,
       recommendedId: smartCandidates[0]?.message.id,
     };
-  }), [candidateQuery, candidateSort, matchTerms, matches]);
+  }), [candidateSort, deferredCandidateQuery, matchTerms, matchesByTerm]);
 
   const selectedEvidenceMatches = useMemo(() => matchGroups.flatMap((group) => {
     const selectedId = selectedByTerm[group.term];
@@ -892,13 +998,7 @@ export function App() {
     const restoredMessages = Array.isArray(archive?.messages) ? archive.messages.map(normalizeMessageIdentity) : [];
     const grouped = groupMessages(restoredMessages);
     const restoredMatches = buildMatches(restoredMessages, sampleMatchTerms);
-    const restoredSelection = {};
-    sampleMatchTerms.forEach((term) => {
-      const recommendation = restoredMatches
-        .filter((match) => match.terms.includes(term))
-        .sort((a, b) => (b.scoreByTerm?.[term] || 0) - (a.scoreByTerm?.[term] || 0) || Number(b.message.date) - Number(a.message.date))[0];
-      if (recommendation) restoredSelection[term] = recommendation.message.id;
-    });
+    const restoredSelection = buildRecommendedSelections(sampleMatchTerms, restoredMatches);
     setMessages(restoredMessages);
     setSourceName(archive?.sourceName || "لا يوجد ملف بعد");
     setSelectedAddress(grouped[0]?.address || "");
@@ -964,6 +1064,15 @@ export function App() {
     localStorage.setItem("n9-phone-custom-time", customTime);
   }, [clockMode, customTime, deviceStyle]);
 
+  useEffect(() => {
+    setConversationLimit(CONVERSATION_RENDER_BATCH);
+  }, [activeWorkspaceId, messages]);
+
+  useEffect(() => {
+    setMatchGroupLimit(MATCH_GROUP_RENDER_BATCH);
+    setCandidateLimits({});
+  }, [candidateSort, deferredCandidateQuery, matches]);
+
   function chooseMessage(message) {
     setSelectedAddress(message.address);
     setSelectedMessageId(message.id);
@@ -971,13 +1080,7 @@ export function App() {
   }
 
   function recommendSelections(terms, nextMatches) {
-    const nextSelection = {};
-    terms.forEach((term) => {
-      const recommendation = nextMatches
-        .filter((match) => match.terms.includes(term))
-        .sort((a, b) => (b.scoreByTerm?.[term] || 0) - (a.scoreByTerm?.[term] || 0) || Number(b.message.date) - Number(a.message.date))[0];
-      if (recommendation) nextSelection[term] = recommendation.message.id;
-    });
+    const nextSelection = buildRecommendedSelections(terms, nextMatches);
     setSelectedByTerm(nextSelection);
     return nextSelection;
   }
@@ -1335,7 +1438,7 @@ export function App() {
         <div className="conversation-items">
           {query && (
             <section className="search-results-block" aria-label="نتائج البحث">
-              <div className="conversation-count search-count"><span>نتائج البحث</span><span>عرض {Math.min(searchLimit, searchResults.length).toLocaleString("ar-SA")} من {searchResults.length.toLocaleString("ar-SA")}</span></div>
+              <div className="conversation-count search-count"><span>نتائج البحث</span><span>{query !== deferredQuery ? "جاري البحث…" : `عرض ${Math.min(searchLimit, searchResults.length).toLocaleString("ar-SA")} من ${searchResults.length.toLocaleString("ar-SA")}`}</span></div>
               {searchResults.length ? searchResults.slice(0, searchLimit).map((message) => (
                 <button className={`search-result-item ${selectedMessage?.id === message.id ? "is-selected" : ""}`} key={message.id} onClick={() => { chooseMessage(message); setConversationPanelOpen(false); }} type="button">
                   <span className="search-result-top"><strong>{message.contactName === "(Unknown)" ? message.address : message.contactName}</strong><small>{formatShortDate(message.date)} · {formatTime(message.date)}</small></span>
@@ -1345,13 +1448,12 @@ export function App() {
               {searchResults.length > searchLimit && (
                 <div className="search-more-actions">
                   <button onClick={() => setSearchLimit((current) => Math.min(current + 100, searchResults.length))} type="button">عرض 100 رسالة أخرى</button>
-                  <button onClick={() => setSearchLimit(searchResults.length)} type="button">عرض كل النتائج</button>
                 </div>
               )}
               <div className="all-conversations-divider"><span>كل المحادثات</span><span>{conversations.length.toLocaleString("ar-SA")}</span></div>
             </section>
           )}
-          {!query && <div className="conversation-count embedded-count"><span>المحادثات</span><span>{conversations.length.toLocaleString("ar-SA")}</span></div>}
+          {!query && <div className="conversation-count embedded-count"><span>المحادثات</span><span>عرض {Math.min(conversationLimit, conversations.length).toLocaleString("ar-SA")} من {conversations.length.toLocaleString("ar-SA")}</span></div>}
           {!conversations.length && !restoringArchive && (
             <div className="company-empty-state">
               <span><Icon path={mdiOfficeBuildingOutline} size={1.25} /></span>
@@ -1360,7 +1462,7 @@ export function App() {
               <div className="empty-state-actions"><button onClick={() => setImportOpen(true)} type="button"><Icon path={mdiTrayArrowUp} size={0.75} /> رفع XML</button><button onClick={() => setComposerOpen(true)} type="button"><Icon path={mdiMessagePlusOutline} size={0.75} /> إنشاء رسالة</button></div>
             </div>
           )}
-          {conversations.map((conversation) => (
+          {conversations.slice(0, conversationLimit).map((conversation) => (
             <button
               className={`conversation-item ${selectedConversation?.address === conversation.address ? "is-selected" : ""}`}
               key={conversation.address}
@@ -1381,6 +1483,12 @@ export function App() {
               {conversation.unread > 0 && <span className="unread-dot">{conversation.unread}</span>}
             </button>
           ))}
+          {conversations.length > conversationLimit && (
+            <button className="list-window-control" onClick={() => setConversationLimit((current) => Math.min(current + CONVERSATION_RENDER_BATCH, conversations.length))} type="button">
+              عرض {Math.min(CONVERSATION_RENDER_BATCH, conversations.length - conversationLimit).toLocaleString("ar-SA")} محادثة أخرى
+              <small>جميع المحادثات محفوظة، ويتم عرضها على دفعات لتجنب التعليق.</small>
+            </button>
+          )}
         </div>
       </section>
 
@@ -1434,7 +1542,7 @@ export function App() {
               : previewMode === "conversation"
                 ? sourceName === "بيانات تجريبية"
                   ? `هذه عينة فقط: تعرض المحادثة كاملة وعددها ${selectedConversation?.messages.length?.toLocaleString("ar-SA") || 0} رسائل. ارفع XML لعرض أرشيفك.`
-                  : `عرض كامل لمحادثة ${activeWorkspace?.name}: ${selectedConversation?.messages.length?.toLocaleString("ar-SA") || 0} رسالة. مرّر للأعلى للوصول إلى الأقدم.`
+                  : `كل رسائل محادثة ${activeWorkspace?.name} متاحة (${selectedConversation?.messages.length?.toLocaleString("ar-SA") || 0})، ويعرضها الهاتف على دفعات سريعة.`
                 : `دليل من ${activeWorkspace?.name || "الشركة المفتوحة"} — اختر رسالة ثم صدّر الصورة.`}
           </div>
           <div className={`phone-frame frame-${deviceStyle}`}>
@@ -1489,7 +1597,10 @@ export function App() {
         </div>
         <div className="matches-heading"><span>الرسائل المرشحة لكل رقم</span><span>{matchGroups.length}</span></div>
         <div className="match-results">
-          {matchTerms.length ? matchGroups.map((group) => (
+          {matchTerms.length ? matchGroups.slice(0, matchGroupLimit).map((group) => {
+            const candidateLimit = candidateLimits[group.term] || MATCH_CANDIDATE_RENDER_BATCH;
+            const renderedCandidates = group.visibleCandidates.slice(0, candidateLimit);
+            return (
             <section className="match-group" key={group.term}>
               <header><strong dir="ltr">{group.term}</strong><span>{group.visibleCandidates.length === group.candidates.length ? `${group.candidates.length.toLocaleString("ar-SA")} رسالة` : `${group.visibleCandidates.length.toLocaleString("ar-SA")} من ${group.candidates.length.toLocaleString("ar-SA")}`}</span></header>
               {!group.candidates.length && (
@@ -1498,7 +1609,7 @@ export function App() {
               {group.candidates.length > 0 && !group.visibleCandidates.length && (
                 <div className="unmatched-number filtered-empty"><Icon path={mdiMagnify} size={0.82} /><span><strong>لا توجد نتيجة ضمن البحث</strong><small>امسح بحث المرشحين لعرض الرسائل كاملة.</small></span></div>
               )}
-              {group.visibleCandidates.map(({ message, scoreByTerm }) => {
+              {renderedCandidates.map(({ message, scoreByTerm }) => {
                 const isChosen = (selectedByTerm[group.term] || group.recommendedId) === message.id;
                 const isRecommended = group.recommendedId === message.id;
                 return (
@@ -1512,8 +1623,23 @@ export function App() {
                   </button>
                 );
               })}
+              {group.visibleCandidates.length > candidateLimit && (
+                <button className="list-window-control compact" onClick={() => setCandidateLimits((current) => ({
+                  ...current,
+                  [group.term]: Math.min(candidateLimit + MATCH_CANDIDATE_RENDER_BATCH, group.visibleCandidates.length),
+                }))} type="button">
+                  عرض {Math.min(MATCH_CANDIDATE_RENDER_BATCH, group.visibleCandidates.length - candidateLimit).toLocaleString("ar-SA")} ترشيح آخر
+                </button>
+              )}
             </section>
-          )) : <div className="empty-results"><Icon path={mdiMagnify} size={1.3} /><strong>لا توجد أرقام بعد</strong><span>أضف رقمًا ثم نفّذ المطابقة.</span></div>}
+            );
+          }) : <div className="empty-results"><Icon path={mdiMagnify} size={1.3} /><strong>لا توجد أرقام بعد</strong><span>أضف رقمًا ثم نفّذ المطابقة.</span></div>}
+          {matchGroups.length > matchGroupLimit && (
+            <button className="list-window-control" onClick={() => setMatchGroupLimit((current) => Math.min(current + MATCH_GROUP_RENDER_BATCH, matchGroups.length))} type="button">
+              عرض {Math.min(MATCH_GROUP_RENDER_BATCH, matchGroups.length - matchGroupLimit).toLocaleString("ar-SA")} رقم مطابق آخر
+              <small>لم تُستبعد أي أرقام؛ يتم عرض مجموعات المطابقة على دفعات.</small>
+            </button>
+          )}
         </div>
         <div className="export-actions">
           <button disabled={!selectedEvidenceMatches.length} onClick={exportAllImages} type="button"><Icon path={mdiImageMultipleOutline} size={0.8} /> تصدير المختار ZIP</button>

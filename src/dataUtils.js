@@ -16,21 +16,39 @@ export function normalizeComparable(value) {
     .toLowerCase();
 }
 
-export function filterConversationMessages(messages, query, conversation = {}) {
-  const normalizeSearchText = (value) => normalizeComparable(value)
+const conversationSearchCache = new WeakMap();
+
+function normalizeSearchText(value) {
+  return normalizeComparable(value)
     .replace(/[إأآٱ]/g, "ا")
     .replace(/ى/g, "ي")
     .replace(/ؤ/g, "و")
     .replace(/ئ/g, "ي")
     .replace(/ة/g, "ه");
-  const normalizedQuery = normalizeSearchText(query);
-  if (!normalizedQuery) return [...(messages || [])];
+}
 
-  return (messages || []).filter((message) => normalizeSearchText([
-    message?.body,
-    message?.address || conversation?.address,
-    message?.contactName || conversation?.contactName,
-  ].filter(Boolean).join(" ")).includes(normalizedQuery));
+function getConversationSearchText(message) {
+  if (!message || typeof message !== "object") return "";
+  const cached = conversationSearchCache.get(message);
+  if (cached !== undefined) return cached;
+  const normalized = normalizeSearchText([
+    message.body,
+    message.address,
+    message.contactName,
+  ].filter(Boolean).join(" "));
+  conversationSearchCache.set(message, normalized);
+  return normalized;
+}
+
+export function filterConversationMessages(messages, query, conversation = {}) {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return messages || [];
+  const conversationFallback = normalizeSearchText(`${conversation?.address || ""} ${conversation?.contactName || ""}`);
+
+  return (messages || []).filter((message) => (
+    getConversationSearchText(message).includes(normalizedQuery)
+    || conversationFallback.includes(normalizedQuery)
+  ));
 }
 
 export function expandScientificNotation(value) {

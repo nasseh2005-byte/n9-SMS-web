@@ -2,7 +2,7 @@
 
 ## Final status
 
-- Automated tests: 22/22 passed.
+- Automated tests: 23/23 passed.
 - Production build: passed.
 - Browser console after a fresh reload and matching flow: 0 errors.
 - Desktop and 390 px mobile checks: no horizontal overflow.
@@ -54,13 +54,14 @@ Source: `C:\Users\win\Downloads\هاجديه (1).xml`
 
 ## Complete archive display and persistence
 
-- A conversation renders every message in the selected thread; the previous last-18-message cap was removed.
+- Every message remains available in the selected thread; the phone renders explicit 160-message batches with older/newer controls instead of putting tens of thousands of bubbles in the DOM at once.
 - Manually created messages are validated, assigned stable unique ids, and saved to the active company's archive with exact user-entered send and receive/delivery timestamps.
 - Date separators cover the complete conversation, and the header reports the real total message count.
-- Global search keeps the complete result set. It initially renders 100 results for responsiveness and provides explicit controls to load another 100 or show all results; no result is silently excluded.
+- Global search keeps the complete result set and renders another 100 results on demand; no result is silently excluded.
 - Imported XML archives are saved in browser IndexedDB and restored after a page reload, including the selected conversation and initial smart matches.
 - The built-in ten-message dataset is visibly labeled as a sample so it cannot be mistaken for an incomplete imported archive.
 - Browser verification covered full sample-thread rendering, date separators, candidate filtering, newest/oldest sorting, and a fresh console with 0 errors.
+- Large-archive verification produced 36,652 total messages after merging the 36,642-message XML with 10 local sample messages, then opened a 34,752-message conversation with only 160 message nodes rendered; repeated opening completed in about half a second and browser console errors remained at 0.
 
 ## Company workspaces and access control
 
