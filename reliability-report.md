@@ -86,12 +86,20 @@ Source: `C:\Users\win\Downloads\هاجديه (1).xml`
 
 ## PDF and multi-selection export
 
-- Candidate check controls support independent multi-selection, select-all over the current candidate search, and clearing without discarding the smart primary evidence for each identifier.
+- Candidate check controls support independent multi-selection and select-all over the current candidate search. Manual mode is the default and exports remain disabled until a human approves a candidate; automatic recommendations require an explicit mode switch.
 - Duplicate candidate appearances are deduplicated by stable message id before export.
 - Evidence filenames prefer the matched number plus labeled payment, license, violation, request, visit, reference, or transaction numbers from the SMS; duplicate names receive numeric suffixes.
 - One selected SMS downloads as a direct PNG or one-page PDF. Multiple selections download as a ZIP containing separate, normally named PNG or PDF files.
 - Browser verification used real local archive data: a direct PDF opened as one unencrypted page, Poppler rendered the phone evidence correctly, and a two-message ZIP contained two independently readable one-page PDFs.
 - PDF generation and naming are covered by four automated tests, including rejection of visit dates as filenames; no external upload or PDF service is used.
+
+## Match-panel usability verification
+
+- The supplied 376×872 screen recording showed the result list compressed below two separate summary/selection cards.
+- The summary and multi-select actions now share one compact card, the panel is wider, and export actions occupy one row.
+- At the local 1280×720 browser state, the match panel measured 349 px wide and the candidate viewport measured 225 px high instead of collapsing to a narrow strip.
+- At 390×845, the overlay measured 365 px wide, kept a 307 px candidate viewport, and produced zero horizontal overflow.
+- The default state verified as `theme-light`, manual selection active, zero chosen candidates, and all export actions disabled. Approving one message enabled export; switching to automatic selected three recommendations; returning to manual cleared them.
 
 ## Known source limitation
 

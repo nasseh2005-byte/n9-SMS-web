@@ -932,14 +932,14 @@ export function App() {
   const [matchTerms, setMatchTerms] = useState(sampleMatchTerms);
   const [matches, setMatches] = useState([]);
   const [selectedByTerm, setSelectedByTerm] = useState({});
-  const [selectionMode, setSelectionMode] = useState("auto");
+  const [selectionMode, setSelectionMode] = useState("manual");
   const [candidateQuery, setCandidateQuery] = useState("");
   const [candidateSort, setCandidateSort] = useState("smart");
   const [matchGroupLimit, setMatchGroupLimit] = useState(MATCH_GROUP_RENDER_BATCH);
   const [candidateLimits, setCandidateLimits] = useState({});
   const [batchSelection, setBatchSelection] = useState({});
   const [exportBusy, setExportBusy] = useState(false);
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState(() => localStorage.getItem("n9-app-theme") || "light");
   const [deviceStyle, setDeviceStyle] = useState(() => localStorage.getItem("n9-phone-style") || "android");
   const [clockMode, setClockMode] = useState(() => localStorage.getItem("n9-phone-clock-mode") || "message");
   const [customTime, setCustomTime] = useState(() => localStorage.getItem("n9-phone-custom-time") || "09:41");
@@ -1012,10 +1012,10 @@ export function App() {
   }), [candidateSort, deferredCandidateQuery, matchTerms, matchesByTerm]);
 
   const selectedEvidenceMatches = useMemo(() => matchGroups.flatMap((group) => {
-    const selectedId = selectedByTerm[group.term];
-    const selected = group.candidates.find((candidate) => candidate.message.id === selectedId) || group.candidates[0];
+    const selectedId = selectedByTerm[group.term] || (selectionMode === "auto" ? group.recommendedId : "");
+    const selected = group.candidates.find((candidate) => candidate.message.id === selectedId);
     return selected ? [{ term: group.term, message: selected.message, score: selected.scoreByTerm?.[group.term] || 0 }] : [];
-  }), [matchGroups, selectedByTerm]);
+  }), [matchGroups, selectedByTerm, selectionMode]);
 
   const messagesById = useMemo(
     () => new Map(messages.map((message) => [message.id, message])),
@@ -1038,7 +1038,7 @@ export function App() {
     const restoredMessages = Array.isArray(archive?.messages) ? archive.messages.map(normalizeMessageIdentity) : [];
     const grouped = groupMessages(restoredMessages);
     const restoredMatches = buildMatches(restoredMessages, sampleMatchTerms);
-    const restoredSelection = buildRecommendedSelections(sampleMatchTerms, restoredMatches);
+    const restoredSelection = selectionMode === "auto" ? buildRecommendedSelections(sampleMatchTerms, restoredMatches) : {};
     setMessages(restoredMessages);
     setSourceName(archive?.sourceName || "لا يوجد ملف بعد");
     setSelectedAddress(grouped[0]?.address || "");
@@ -1102,7 +1102,8 @@ export function App() {
     localStorage.setItem("n9-phone-style", deviceStyle);
     localStorage.setItem("n9-phone-clock-mode", clockMode);
     localStorage.setItem("n9-phone-custom-time", customTime);
-  }, [clockMode, customTime, deviceStyle]);
+    localStorage.setItem("n9-app-theme", theme);
+  }, [clockMode, customTime, deviceStyle, theme]);
 
   useEffect(() => {
     setConversationLimit(CONVERSATION_RENDER_BATCH);
@@ -1133,9 +1134,10 @@ export function App() {
     setMatchTerms(terms);
     const nextMatches = buildMatches(messages, terms);
     setMatches(nextMatches);
-    const selections = recommendSelections(terms, nextMatches);
+    const selections = selectionMode === "auto" ? recommendSelections(terms, nextMatches) : {};
+    if (selectionMode === "manual") setSelectedByTerm({});
     const firstSelectedId = Object.values(selections)[0];
-    const firstSelected = nextMatches.find((match) => match.message.id === firstSelectedId);
+    const firstSelected = nextMatches.find((match) => match.message.id === firstSelectedId) || nextMatches[0];
     if (firstSelected) chooseMessage(firstSelected.message);
     const matchedTermCount = new Set(nextMatches.flatMap((match) => match.terms)).size;
     setToast(nextMatches.length
@@ -1392,13 +1394,13 @@ export function App() {
 
   function selectCandidate(term, message) {
     setSelectionMode("manual");
-    setSelectedByTerm((current) => ({ ...current, [term]: message.id }));
+    setSelectedByTerm((current) => (selectionMode === "auto" ? { [term]: message.id } : { ...current, [term]: message.id }));
     chooseMessage(message);
   }
 
   function toggleBatchCandidate(term, message) {
     setSelectionMode("manual");
-    setSelectedByTerm((current) => ({ ...current, [term]: message.id }));
+    setSelectedByTerm((current) => (selectionMode === "auto" ? { [term]: message.id } : { ...current, [term]: message.id }));
     setBatchSelection((current) => {
       const next = { ...current };
       if (next[message.id]) delete next[message.id];
@@ -1417,16 +1419,25 @@ export function App() {
     }
     setBatchSelection(nextSelection);
     setSelectionMode("manual");
+    setSelectedByTerm({});
     setToast(`تم تحديد ${Object.keys(nextSelection).length.toLocaleString("ar-SA")} رسالة ظاهرة للتصدير`);
   }
 
   function clearBatchSelection() {
     setBatchSelection({});
-    setToast("تم مسح التحديد المتعدد؛ سيُستخدم أفضل دليل لكل رقم");
+    setToast(selectionMode === "auto" ? "تم مسح التحديد المتعدد؛ سيُستخدم الاقتراح التلقائي لكل رقم" : "تم مسح التحديد المتعدد؛ اختر الرسالة التي تريد اعتمادها يدويًا");
+  }
+
+  function switchToManual() {
+    setSelectionMode("manual");
+    setSelectedByTerm({});
+    setBatchSelection({});
+    setToast("الاختيار اليدوي مفعّل — لن يُعتمد أي دليل حتى تختاره بنفسك");
   }
 
   function switchToAutomatic() {
     setSelectionMode("auto");
+    setBatchSelection({});
     const selections = recommendSelections(matchTerms, matches);
     const firstSelectedId = Object.values(selections)[0];
     const firstSelected = matches.find((match) => match.message.id === firstSelectedId);
@@ -1711,9 +1722,9 @@ export function App() {
           <button className="match-run" onClick={() => runMatch()} type="button"><Icon path={mdiMagnify} size={0.84} /> تنفيذ المطابقة</button>
           <button className="match-upload" onClick={() => setImportOpen(true)} type="button"><Icon path={mdiFileTableOutline} size={0.84} /> Excel / CSV</button>
         </div>
-        <div className="selection-mode" aria-label="طريقة اختيار الدليل">
-          <button className={selectionMode === "auto" ? "is-active" : ""} onClick={switchToAutomatic} type="button">اختيار ذكي</button>
-          <button className={selectionMode === "manual" ? "is-active" : ""} onClick={() => setSelectionMode("manual")} type="button">اختيار يدوي</button>
+        <div className="selection-mode" aria-label="طريقة اعتماد الدليل">
+          <button aria-pressed={selectionMode === "manual"} className={selectionMode === "manual" ? "is-active" : ""} onClick={switchToManual} type="button"><strong>اختيار يدوي</strong><small>أنت تعتمد الرسالة</small></button>
+          <button aria-pressed={selectionMode === "auto"} className={selectionMode === "auto" ? "is-active" : ""} onClick={switchToAutomatic} type="button"><strong>اقتراح تلقائي</strong><small>أفضل رسالة لكل رقم</small></button>
         </div>
         <div className="candidate-tools">
           <label className="candidate-search">
@@ -1730,21 +1741,25 @@ export function App() {
             </select>
           </label>
         </div>
-        <div className="result-summary">
-          <span className="result-icon"><Icon path={matches.length ? mdiCheckCircle : mdiAlertCircleOutline} size={1.08} /></span>
-          <span>
-            <strong>{selectedBatchItems.length ? `${selectedBatchItems.length.toLocaleString("ar-SA")} رسالة محددة للتصدير` : `${selectedEvidenceMatches.length.toLocaleString("ar-SA")} دليل ذكي جاهز`}</strong>
-            <small>{matches.length.toLocaleString("ar-SA")} رسالة مرشحة عبر {matchTerms.length.toLocaleString("ar-SA")} رقم</small>
-          </span>
-        </div>
-        <div className="batch-selection-toolbar" aria-label="التحديد المتعدد">
-          <span><strong>التحديد المتعدد</strong><small>اضغط الدائرة بجانب أي رسالة، أو حدد كل نتائج البحث الحالية.</small></span>
-          <div>
+        <div className={`selection-status-card ${batchExportItems.length ? "is-ready" : "is-pending"}`} aria-label="حالة اختيار الأدلة">
+          <div className="result-summary">
+            <span className="result-icon"><Icon path={batchExportItems.length ? mdiCheckCircle : mdiAlertCircleOutline} size={1.02} /></span>
+            <span>
+              <strong>{selectedBatchItems.length
+                ? `${selectedBatchItems.length.toLocaleString("ar-SA")} رسالة محددة للتصدير`
+                : selectionMode === "manual"
+                  ? `${selectedEvidenceMatches.length.toLocaleString("ar-SA")} دليل معتمد يدويًا`
+                  : `${selectedEvidenceMatches.length.toLocaleString("ar-SA")} اقتراح تلقائي جاهز`}</strong>
+              <small>{matches.length.toLocaleString("ar-SA")} رسالة مرشحة · {matchTerms.length.toLocaleString("ar-SA")} رقم بحث</small>
+            </span>
+          </div>
+          <div className="selection-quick-actions">
             <button disabled={!matches.length || exportBusy} onClick={selectAllVisibleCandidates} type="button">تحديد الكل</button>
             <button disabled={!selectedBatchItems.length || exportBusy} onClick={clearBatchSelection} type="button">مسح التحديد</button>
           </div>
+          <small className="selection-help">اضغط على نص الرسالة لمعاينتها واعتمادها، أو على الدائرة لاختيار عدة رسائل للتصدير.</small>
         </div>
-        <div className="matches-heading"><span>الرسائل المرشحة لكل رقم</span><span>{matchGroups.length}</span></div>
+        <div className="matches-heading"><span>الرسائل المرشحة</span><span>{matchGroups.length.toLocaleString("ar-SA")} مجموعة أرقام</span></div>
         <div className="match-results">
           {matchTerms.length ? matchGroups.slice(0, matchGroupLimit).map((group) => {
             const candidateLimit = candidateLimits[group.term] || MATCH_CANDIDATE_RENDER_BATCH;
@@ -1759,7 +1774,8 @@ export function App() {
                 <div className="unmatched-number filtered-empty"><Icon path={mdiMagnify} size={0.82} /><span><strong>لا توجد نتيجة ضمن البحث</strong><small>امسح بحث المرشحين لعرض الرسائل كاملة.</small></span></div>
               )}
               {renderedCandidates.map(({ message, scoreByTerm }) => {
-                const isChosen = (selectedByTerm[group.term] || group.recommendedId) === message.id;
+                const chosenId = selectedByTerm[group.term] || (selectionMode === "auto" ? group.recommendedId : "");
+                const isChosen = chosenId === message.id;
                 const isRecommended = group.recommendedId === message.id;
                 const isBatchSelected = Boolean(batchSelection[message.id]);
                 return (
@@ -1768,7 +1784,7 @@ export function App() {
                     <button className="candidate-copy candidate-preview" onClick={() => selectCandidate(group.term, message)} type="button">
                       <span className="match-item-top"><strong>{message.contactName === "(Unknown)" ? message.address : message.contactName}</strong><small>{formatShortDate(message.date)} · {formatTime(message.date)}</small></span>
                       <span className="match-snippet">{message.body}</span>
-                      <span className="candidate-meta">{isRecommended ? "الترشيح الأذكى" : "اختيار بديل"} · {isChosen ? "الدليل الأساسي" : "اضغط للمعاينة"} · {message.type === "2" ? "صادرة" : "واردة"} · درجة {scoreByTerm?.[group.term] || 0}</span>
+                      <span className="candidate-meta">{isRecommended ? "اقتراح النظام" : "رسالة بديلة"} · {isChosen ? (selectionMode === "manual" ? "معتمدة يدويًا" : "المقترح المعتمد") : "اضغط للاعتماد"} · {message.type === "2" ? "صادرة" : "واردة"} · درجة {scoreByTerm?.[group.term] || 0}</span>
                     </button>
                   </article>
                 );
@@ -1795,7 +1811,7 @@ export function App() {
           <button disabled={!batchExportItems.length || exportBusy} onClick={exportAllImages} type="button"><Icon path={mdiImageMultipleOutline} size={0.8} /> صور / ZIP</button>
           <button disabled={!batchExportItems.length || exportBusy} onClick={exportAllPdfs} type="button"><Icon path={mdiFileDocumentOutline} size={0.8} /> PDF / ZIP</button>
           <button disabled={!batchExportItems.length || exportBusy} onClick={exportCsv} type="button"><Icon path={mdiDownload} size={0.8} /> CSV</button>
-          <small>{selectedBatchItems.length ? "سيُصدّر التحديد المتعدد فقط." : "لا يوجد تحديد متعدد؛ سيُصدّر أفضل دليل لكل رقم."}</small>
+          <small>{selectedBatchItems.length ? "سيُصدّر التحديد المتعدد فقط." : selectionMode === "manual" ? "اختر رسالة يدويًا لتفعيل التصدير." : "سيُصدّر الاقتراح التلقائي لكل رقم."}</small>
         </div>
       </aside>
 
