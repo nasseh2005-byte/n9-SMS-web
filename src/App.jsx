@@ -59,6 +59,12 @@ import {
   quoteCsvCell,
   toIsoTimestamp,
 } from "./dataUtils.js";
+import {
+  buildEvidenceBaseName,
+  createJpegPdf,
+  imageDataUrlToJpeg,
+  sanitizeEvidenceName,
+} from "./pdfUtils.js";
 import { sampleMatchTerms, sampleMessages } from "./sampleData.js";
 import {
   createUser,
@@ -193,11 +199,26 @@ function downloadBlob(blob, fileName) {
   link.href = URL.createObjectURL(blob);
   link.download = fileName;
   link.click();
-  URL.revokeObjectURL(link.href);
+  window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
 function downloadText(text, fileName, type = "text/csv;charset=utf-8") {
   downloadBlob(new Blob([text], { type }), fileName);
+}
+
+function buildUniqueEvidenceNames(items, extension) {
+  const usedNames = new Map();
+  return items.map((item) => {
+    const baseName = buildEvidenceBaseName(item.message, item.term);
+    const duplicateNumber = (usedNames.get(baseName) || 0) + 1;
+    usedNames.set(baseName, duplicateNumber);
+    return `${baseName}${duplicateNumber > 1 ? `-${duplicateNumber}` : ""}.${extension}`;
+  });
+}
+
+function buildEvidenceArchiveName(items, label) {
+  const firstName = items[0] ? buildEvidenceBaseName(items[0].message, items[0].term) : "export";
+  return sanitizeEvidenceName(`N9-${label}-${firstName}`) + ".zip";
 }
 
 function NavButton({ active, icon, label, onClick }) {
@@ -719,7 +740,7 @@ function LoginScreen({ busy, error, onLogin }) {
           {isLocalPreview && <small className="preview-note">{copy.preview}</small>}
         </section>
       </div>
-      <footer className="welcome-footer"><span>© N9 SMS</span><span>Private evidence workspace</span></footer>
+      <footer className="welcome-footer"><span>© N9 SMS</span><span>nasseh zaher alnaman by N9 TOOLS</span></footer>
     </main>
   );
 }
@@ -916,6 +937,8 @@ export function App() {
   const [candidateSort, setCandidateSort] = useState("smart");
   const [matchGroupLimit, setMatchGroupLimit] = useState(MATCH_GROUP_RENDER_BATCH);
   const [candidateLimits, setCandidateLimits] = useState({});
+  const [batchSelection, setBatchSelection] = useState({});
+  const [exportBusy, setExportBusy] = useState(false);
   const [theme, setTheme] = useState("dark");
   const [deviceStyle, setDeviceStyle] = useState(() => localStorage.getItem("n9-phone-style") || "android");
   const [clockMode, setClockMode] = useState(() => localStorage.getItem("n9-phone-clock-mode") || "message");
@@ -994,6 +1017,23 @@ export function App() {
     return selected ? [{ term: group.term, message: selected.message, score: selected.scoreByTerm?.[group.term] || 0 }] : [];
   }), [matchGroups, selectedByTerm]);
 
+  const messagesById = useMemo(
+    () => new Map(messages.map((message) => [message.id, message])),
+    [messages],
+  );
+  const selectedBatchItems = useMemo(() => Object.entries(batchSelection).flatMap(([messageId, term]) => {
+    const message = messagesById.get(messageId);
+    return message ? [{ term, message }] : [];
+  }), [batchSelection, messagesById]);
+  const batchExportItems = useMemo(() => {
+    const source = selectedBatchItems.length ? selectedBatchItems : selectedEvidenceMatches;
+    const seen = new Set();
+    return source.filter(({ message }) => {
+      if (seen.has(message.id)) return false;
+      seen.add(message.id);
+      return true;
+    });
+  }, [selectedBatchItems, selectedEvidenceMatches]);
   function applyArchive(archive) {
     const restoredMessages = Array.isArray(archive?.messages) ? archive.messages.map(normalizeMessageIdentity) : [];
     const grouped = groupMessages(restoredMessages);
@@ -1072,6 +1112,10 @@ export function App() {
     setMatchGroupLimit(MATCH_GROUP_RENDER_BATCH);
     setCandidateLimits({});
   }, [candidateSort, deferredCandidateQuery, matches]);
+
+  useEffect(() => {
+    setBatchSelection({});
+  }, [matches]);
 
   function chooseMessage(message) {
     setSelectedAddress(message.address);
@@ -1215,53 +1259,117 @@ export function App() {
     }
   }
 
+  async function captureMessageImage(message) {
+    setExportingMatch(message);
+    await new Promise((resolve) => window.setTimeout(resolve, 140));
+    if (!captureRef.current) throw new Error("capture-unavailable");
+    await document.fonts.ready;
+    return toPng(captureRef.current, {
+      pixelRatio: 2,
+      cacheBust: true,
+      backgroundColor: theme === "light" ? "#f7f9fc" : "#171a1d",
+    });
+  }
+
   async function exportCurrentImage() {
-    if (!captureRef.current || !selectedMessage) return;
+    if (!selectedMessage || exportBusy) return;
+    setExportBusy(true);
     try {
-      await document.fonts.ready;
-      const dataUrl = await toPng(captureRef.current, { pixelRatio: 2, cacheBust: true, backgroundColor: theme === "light" ? "#f7f9fc" : "#171a1d" });
-      downloadDataUrl(dataUrl, `N9-SMS-${selectedMessage.address}-${selectedMessage.id}.png`);
-      setToast("تم تصدير صورة الدليل بدقة عالية");
+      const dataUrl = await captureMessageImage(selectedMessage);
+      downloadDataUrl(dataUrl, `${buildEvidenceBaseName(selectedMessage)}.png`);
+      setToast("تم تصدير صورة الدليل بدقة عالية وباسم مستخرج من الرسالة");
     } catch {
       setToast("تعذر تصدير الصورة. أعد المحاولة بعد اكتمال تحميل الخط.");
+    } finally {
+      setExportingMatch(null);
+      setExportBusy(false);
+    }
+  }
+
+  async function exportCurrentPdf() {
+    if (!selectedMessage || exportBusy) return;
+    setExportBusy(true);
+    setToast("جاري إنشاء PDF من صورة الرسالة");
+    try {
+      const dataUrl = await captureMessageImage(selectedMessage);
+      const jpeg = await imageDataUrlToJpeg(dataUrl, theme === "light" ? "#f7f9fc" : "#171a1d");
+      downloadBlob(createJpegPdf([jpeg]), `${buildEvidenceBaseName(selectedMessage)}.pdf`);
+      setToast("تم تصدير الرسالة كملف PDF مستقل");
+    } catch {
+      setToast("تعذر إنشاء PDF لهذه الرسالة. أعد المحاولة.");
+    } finally {
+      setExportingMatch(null);
+      setExportBusy(false);
     }
   }
 
   async function exportAllImages() {
-    if (!selectedEvidenceMatches.length) return;
+    if (!batchExportItems.length || exportBusy) return;
     const zip = new JSZip();
-    setToast(`جاري تجهيز ${selectedEvidenceMatches.length.toLocaleString("ar-SA")} صورة مختارة داخل ملف ZIP`);
+    const fileNames = buildUniqueEvidenceNames(batchExportItems, "png");
+    setExportBusy(true);
+    setToast(`جاري تجهيز ${batchExportItems.length.toLocaleString("ar-SA")} صورة محددة`);
     try {
-      for (let index = 0; index < selectedEvidenceMatches.length; index += 1) {
-        const match = selectedEvidenceMatches[index];
-        setExportingMatch(match.message);
-        await new Promise((resolve) => window.setTimeout(resolve, 180));
-        if (captureRef.current) {
-          const dataUrl = await toPng(captureRef.current, { pixelRatio: 2, cacheBust: true, backgroundColor: theme === "light" ? "#f7f9fc" : "#171a1d" });
-          const base64 = dataUrl.split(",")[1];
-          const safeSender = String(match.message.address).replace(/[<>:"/\\|?*]/g, "-").slice(0, 42);
-          const safeTerm = String(match.term).replace(/[<>:"/\\|?*]/g, "-").slice(0, 42);
-          zip.file(`${String(index + 1).padStart(3, "0")}-${safeTerm}-${safeSender}-${match.message.id}.png`, base64, { base64: true });
+      for (let index = 0; index < batchExportItems.length; index += 1) {
+        const dataUrl = await captureMessageImage(batchExportItems[index].message);
+        if (batchExportItems.length === 1) {
+          downloadDataUrl(dataUrl, fileNames[index]);
+        } else {
+          zip.file(fileNames[index], dataUrl.split(",")[1], { base64: true });
         }
-        if ((index + 1) % 10 === 0) setToast(`تم تجهيز ${index + 1} من ${selectedEvidenceMatches.length} صورة`);
+        setToast(`تم تجهيز ${(index + 1).toLocaleString("ar-SA")} من ${batchExportItems.length.toLocaleString("ar-SA")} صورة`);
       }
-      const archive = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
-      downloadBlob(archive, "N9-SMS-evidence-images.zip");
-      setToast("اكتمل تصدير جميع صور المطابقة داخل ملف ZIP واحد");
+      if (batchExportItems.length > 1) {
+        const archive = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+        downloadBlob(archive, buildEvidenceArchiveName(batchExportItems, "images"));
+      }
+      setToast(batchExportItems.length > 1 ? "اكتمل تنزيل الصور داخل ملف ZIP واحد" : "تم تنزيل صورة الرسالة");
     } catch {
-      setToast("تعذر إكمال ملف الصور. جرّب تقليل عدد نتائج المطابقة.");
+      setToast("تعذر إكمال ملف الصور. جرّب تحديد عدد أقل ثم أعد المحاولة.");
     } finally {
       setExportingMatch(null);
+      setExportBusy(false);
+    }
+  }
+
+  async function exportAllPdfs() {
+    if (!batchExportItems.length || exportBusy) return;
+    const zip = new JSZip();
+    const fileNames = buildUniqueEvidenceNames(batchExportItems, "pdf");
+    setExportBusy(true);
+    setToast(`جاري إنشاء ${batchExportItems.length.toLocaleString("ar-SA")} ملف PDF`);
+    try {
+      for (let index = 0; index < batchExportItems.length; index += 1) {
+        const dataUrl = await captureMessageImage(batchExportItems[index].message);
+        const jpeg = await imageDataUrlToJpeg(dataUrl, theme === "light" ? "#f7f9fc" : "#171a1d");
+        const pdf = createJpegPdf([jpeg]);
+        if (batchExportItems.length === 1) {
+          downloadBlob(pdf, fileNames[index]);
+        } else {
+          zip.file(fileNames[index], await pdf.arrayBuffer());
+        }
+        setToast(`تم إنشاء ${(index + 1).toLocaleString("ar-SA")} من ${batchExportItems.length.toLocaleString("ar-SA")} PDF`);
+      }
+      if (batchExportItems.length > 1) {
+        const archive = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+        downloadBlob(archive, buildEvidenceArchiveName(batchExportItems, "PDF"));
+      }
+      setToast(batchExportItems.length > 1 ? "اكتمل تنزيل ملفات PDF داخل ZIP واحد" : "تم تنزيل PDF للرسالة");
+    } catch {
+      setToast("تعذر إكمال ملفات PDF. جرّب تحديد عدد أقل ثم أعد المحاولة.");
+    } finally {
+      setExportingMatch(null);
+      setExportBusy(false);
     }
   }
 
   function exportCsv() {
-    if (!selectedEvidenceMatches.length) return;
+    if (!batchExportItems.length || exportBusy) return;
     const rows = [
-      ["match", "sender", "contact", "received_or_sent_date", "date_sent", "delivery_date", "message"],
-      ...selectedEvidenceMatches.map(({ message, term }) => [term, message.address, message.contactName, toIsoTimestamp(message.date), toIsoTimestamp(message.dateSent), toIsoTimestamp(message.deliveryDate), message.body]),
+      ["evidence_file", "match", "sender", "contact", "received_or_sent_date", "date_sent", "delivery_date", "message"],
+      ...batchExportItems.map(({ message, term }) => [buildEvidenceBaseName(message, term), term, message.address, message.contactName, toIsoTimestamp(message.date), toIsoTimestamp(message.dateSent), toIsoTimestamp(message.deliveryDate), message.body]),
     ];
-    downloadText(`\uFEFF${rows.map((row) => row.map(quoteCsvCell).join(",")).join("\r\n")}`, "N9-SMS-matches.csv");
+    downloadText(`\uFEFF${rows.map((row) => row.map(quoteCsvCell).join(",")).join("\r\n")}`, `N9-SMS-${buildEvidenceBaseName(batchExportItems[0].message, batchExportItems[0].term)}.csv`);
     setToast("تم تصدير جدول النتائج");
   }
 
@@ -1286,6 +1394,35 @@ export function App() {
     setSelectionMode("manual");
     setSelectedByTerm((current) => ({ ...current, [term]: message.id }));
     chooseMessage(message);
+  }
+
+  function toggleBatchCandidate(term, message) {
+    setSelectionMode("manual");
+    setSelectedByTerm((current) => ({ ...current, [term]: message.id }));
+    setBatchSelection((current) => {
+      const next = { ...current };
+      if (next[message.id]) delete next[message.id];
+      else next[message.id] = term;
+      return next;
+    });
+    chooseMessage(message);
+  }
+
+  function selectAllVisibleCandidates() {
+    const nextSelection = {};
+    for (const group of matchGroups) {
+      for (const { message } of group.visibleCandidates) {
+        if (!nextSelection[message.id]) nextSelection[message.id] = group.term;
+      }
+    }
+    setBatchSelection(nextSelection);
+    setSelectionMode("manual");
+    setToast(`تم تحديد ${Object.keys(nextSelection).length.toLocaleString("ar-SA")} رسالة ظاهرة للتصدير`);
+  }
+
+  function clearBatchSelection() {
+    setBatchSelection({});
+    setToast("تم مسح التحديد المتعدد؛ سيُستخدم أفضل دليل لكل رقم");
   }
 
   function switchToAutomatic() {
@@ -1511,7 +1648,8 @@ export function App() {
             </button>
             {currentUser.role === "admin" && <button aria-label="إدارة المستخدمين" className="toolbar-button responsive-account" onClick={openUsersDialog} type="button"><Icon path={mdiAccountMultipleOutline} size={0.8} /></button>}
             <button aria-label="تسجيل الخروج" className="toolbar-button responsive-account" onClick={handleLogout} type="button"><Icon path={mdiLogout} size={0.8} /></button>
-            <button className="toolbar-button primary" onClick={exportCurrentImage} type="button"><Icon path={mdiCellphoneScreenshot} size={0.82} /> تصدير الصورة</button>
+            <button className="toolbar-button compact-action" disabled={!selectedMessage || exportBusy} onClick={exportCurrentPdf} title="تصدير الرسالة كملف PDF" type="button"><Icon path={mdiFileDocumentOutline} size={0.82} /><span>PDF</span></button>
+            <button className="toolbar-button primary" disabled={!selectedMessage || exportBusy} onClick={exportCurrentImage} type="button"><Icon path={mdiCellphoneScreenshot} size={0.82} /> تصدير الصورة</button>
           </div>
         </header>
         <div className="stage-canvas">
@@ -1543,7 +1681,7 @@ export function App() {
                 ? sourceName === "بيانات تجريبية"
                   ? `هذه عينة فقط: تعرض المحادثة كاملة وعددها ${selectedConversation?.messages.length?.toLocaleString("ar-SA") || 0} رسائل. ارفع XML لعرض أرشيفك.`
                   : `كل رسائل محادثة ${activeWorkspace?.name} متاحة (${selectedConversation?.messages.length?.toLocaleString("ar-SA") || 0})، ويعرضها الهاتف على دفعات سريعة.`
-                : `دليل من ${activeWorkspace?.name || "الشركة المفتوحة"} — اختر رسالة ثم صدّر الصورة.`}
+                : `دليل من ${activeWorkspace?.name || "الشركة المفتوحة"} — اختر رسالة ثم صدّر الصورة أو PDF.`}
           </div>
           <div className={`phone-frame frame-${deviceStyle}`}>
             {previewMode === "conversation"
@@ -1552,6 +1690,7 @@ export function App() {
           </div>
           <div className="stage-footer">
             <span><Icon path={mdiCheck} size={0.72} /> صورة الهاتف لا تعرض أدوات الموقع</span>
+            <span className="developer-credit">nasseh zaher alnaman by N9 TOOLS</span>
             <span>{selectedMessage ? formatDate(selectedMessage.date) : "—"}</span>
           </div>
         </div>
@@ -1593,7 +1732,17 @@ export function App() {
         </div>
         <div className="result-summary">
           <span className="result-icon"><Icon path={matches.length ? mdiCheckCircle : mdiAlertCircleOutline} size={1.08} /></span>
-          <span><strong>{selectedEvidenceMatches.length.toLocaleString("ar-SA")} دليل مختار</strong><small>{matches.length.toLocaleString("ar-SA")} رسالة مرشحة عبر {matchTerms.length.toLocaleString("ar-SA")} رقم</small></span>
+          <span>
+            <strong>{selectedBatchItems.length ? `${selectedBatchItems.length.toLocaleString("ar-SA")} رسالة محددة للتصدير` : `${selectedEvidenceMatches.length.toLocaleString("ar-SA")} دليل ذكي جاهز`}</strong>
+            <small>{matches.length.toLocaleString("ar-SA")} رسالة مرشحة عبر {matchTerms.length.toLocaleString("ar-SA")} رقم</small>
+          </span>
+        </div>
+        <div className="batch-selection-toolbar" aria-label="التحديد المتعدد">
+          <span><strong>التحديد المتعدد</strong><small>اضغط الدائرة بجانب أي رسالة، أو حدد كل نتائج البحث الحالية.</small></span>
+          <div>
+            <button disabled={!matches.length || exportBusy} onClick={selectAllVisibleCandidates} type="button">تحديد الكل</button>
+            <button disabled={!selectedBatchItems.length || exportBusy} onClick={clearBatchSelection} type="button">مسح التحديد</button>
+          </div>
         </div>
         <div className="matches-heading"><span>الرسائل المرشحة لكل رقم</span><span>{matchGroups.length}</span></div>
         <div className="match-results">
@@ -1612,15 +1761,16 @@ export function App() {
               {renderedCandidates.map(({ message, scoreByTerm }) => {
                 const isChosen = (selectedByTerm[group.term] || group.recommendedId) === message.id;
                 const isRecommended = group.recommendedId === message.id;
+                const isBatchSelected = Boolean(batchSelection[message.id]);
                 return (
-                  <button className={`match-item ${isChosen ? "is-chosen" : ""} ${selectedMessage?.id === message.id ? "is-previewed" : ""}`} key={`${group.term}-${message.id}`} onClick={() => selectCandidate(group.term, message)} type="button">
-                    <span className="candidate-check"><Icon path={isChosen ? mdiCheckCircle : mdiCircleOutline} size={0.76} /></span>
-                    <span className="candidate-copy">
+                  <article className={`match-item ${isChosen ? "is-chosen" : ""} ${isBatchSelected ? "is-batch-selected" : ""} ${selectedMessage?.id === message.id ? "is-previewed" : ""}`} key={`${group.term}-${message.id}`}>
+                    <button aria-label={isBatchSelected ? "إزالة الرسالة من التحديد المتعدد" : "إضافة الرسالة إلى التحديد المتعدد"} aria-pressed={isBatchSelected} className="candidate-check" onClick={() => toggleBatchCandidate(group.term, message)} title="تحديد للتصدير" type="button"><Icon path={isBatchSelected ? mdiCheckCircle : mdiCircleOutline} size={0.76} /></button>
+                    <button className="candidate-copy candidate-preview" onClick={() => selectCandidate(group.term, message)} type="button">
                       <span className="match-item-top"><strong>{message.contactName === "(Unknown)" ? message.address : message.contactName}</strong><small>{formatShortDate(message.date)} · {formatTime(message.date)}</small></span>
                       <span className="match-snippet">{message.body}</span>
-                      <span className="candidate-meta">{isRecommended ? "الترشيح الأذكى" : "اختيار بديل"} · {message.type === "2" ? "صادرة" : "واردة"} · درجة {scoreByTerm?.[group.term] || 0}</span>
-                    </span>
-                  </button>
+                      <span className="candidate-meta">{isRecommended ? "الترشيح الأذكى" : "اختيار بديل"} · {isChosen ? "الدليل الأساسي" : "اضغط للمعاينة"} · {message.type === "2" ? "صادرة" : "واردة"} · درجة {scoreByTerm?.[group.term] || 0}</span>
+                    </button>
+                  </article>
                 );
               })}
               {group.visibleCandidates.length > candidateLimit && (
@@ -1642,8 +1792,10 @@ export function App() {
           )}
         </div>
         <div className="export-actions">
-          <button disabled={!selectedEvidenceMatches.length} onClick={exportAllImages} type="button"><Icon path={mdiImageMultipleOutline} size={0.8} /> تصدير المختار ZIP</button>
-          <button disabled={!selectedEvidenceMatches.length} onClick={exportCsv} type="button"><Icon path={mdiDownload} size={0.8} /> CSV</button>
+          <button disabled={!batchExportItems.length || exportBusy} onClick={exportAllImages} type="button"><Icon path={mdiImageMultipleOutline} size={0.8} /> صور / ZIP</button>
+          <button disabled={!batchExportItems.length || exportBusy} onClick={exportAllPdfs} type="button"><Icon path={mdiFileDocumentOutline} size={0.8} /> PDF / ZIP</button>
+          <button disabled={!batchExportItems.length || exportBusy} onClick={exportCsv} type="button"><Icon path={mdiDownload} size={0.8} /> CSV</button>
+          <small>{selectedBatchItems.length ? "سيُصدّر التحديد المتعدد فقط." : "لا يوجد تحديد متعدد؛ سيُصدّر أفضل دليل لكل رقم."}</small>
         </div>
       </aside>
 

@@ -2,7 +2,7 @@
 
 ## Final status
 
-- Automated tests: 23/23 passed.
+- Automated tests: 27/27 passed.
 - Production build: passed.
 - Browser console after a fresh reload and matching flow: 0 errors.
 - Desktop and 390 px mobile checks: no horizontal overflow.
@@ -83,6 +83,15 @@ Source: `C:\Users\win\Downloads\هاجديه (1).xml`
 - The status-bar clock supports the original SMS time, a live clock refreshed every 30 seconds, or a user-selected time.
 - Phone style and clock preferences are saved per device without modifying any imported XML timestamp.
 - Image and ZIP evidence exports receive the selected phone style and clock mode.
+
+## PDF and multi-selection export
+
+- Candidate check controls support independent multi-selection, select-all over the current candidate search, and clearing without discarding the smart primary evidence for each identifier.
+- Duplicate candidate appearances are deduplicated by stable message id before export.
+- Evidence filenames prefer the matched number plus labeled payment, license, violation, request, visit, reference, or transaction numbers from the SMS; duplicate names receive numeric suffixes.
+- One selected SMS downloads as a direct PNG or one-page PDF. Multiple selections download as a ZIP containing separate, normally named PNG or PDF files.
+- Browser verification used real local archive data: a direct PDF opened as one unencrypted page, Poppler rendered the phone evidence correctly, and a two-message ZIP contained two independently readable one-page PDFs.
+- PDF generation and naming are covered by four automated tests, including rejection of visit dates as filenames; no external upload or PDF service is used.
 
 ## Known source limitation
 
