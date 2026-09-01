@@ -350,6 +350,7 @@ n9-sms-web/
 ├─ design-qa.md                    # سجل QA بصري تاريخي
 ├─ qa-numbers.csv                  # رقمان مرجعيان للاختبار
 ├─ N9-SMS-WEB-HANDOFF.md           # هذا المستند
+├─ تعليمات استخراج SMS للايفون.md  # دليل sms.db/chat.db والتحقق والتحويل إلى XML
 ├─ README.md                        # تشغيل سريع ونشر GitHub/Vercel
 ├─ .env.example                    # أسماء env المطلوبة بلا أسرار
 ├─ .env.vercel                     # يفعّل بوابة Vercel السحابية في الواجهة
