@@ -944,23 +944,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .welcome-hero-frame { position: relative; width: min(100vw, calc(100dvh * 1.9043)); aspect-ratio: 1731 / 909; overflow: visible; }
 .welcome-hero-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity .55s ease; user-select: none; }
 .welcome-hero-image.is-visible { opacity: 1; }
-.archive-hotspots { position: absolute; z-index: 4; inset: 0; }
-.archive-hotspot { position: absolute; padding: 0; border: 1px solid transparent; border-radius: 24px; background: transparent; color: #0b6fe7; cursor: pointer; transition: border-color .28s ease, background .28s ease, box-shadow .28s ease, transform .28s ease; }
-.archive-hotspot:hover, .archive-hotspot:focus-visible, .archive-hotspot.is-active { border-color: rgba(82,166,255,.8); background: rgba(4,35,77,.14); box-shadow: 0 0 34px rgba(31,127,255,.3), inset 0 0 28px rgba(42,137,255,.12); outline: 0; }
-.archive-hotspot-1 { left: 63%; top: 6.5%; width: 31%; height: 28%; }
-.archive-hotspot-2 { left: 52%; top: 38%; width: 36%; height: 28%; }
-.archive-hotspot-3 { left: 42%; top: 71%; width: 35%; height: 27%; }
-.archive-hotspot-focus { position: absolute; right: 11px; top: 11px; width: 34px; height: 34px; border: 1px solid rgba(84,170,255,.42); border-radius: 12px; background: rgba(4,31,67,.76); color: #74b9ff; display: grid; place-items: center; opacity: .58; transition: opacity .25s ease, transform .25s ease; }
-.archive-hotspot:hover .archive-hotspot-focus, .archive-hotspot:focus-visible .archive-hotspot-focus, .archive-hotspot.is-active .archive-hotspot-focus { opacity: 1; transform: scale(1.06); }
-.archive-hotspot-card { position: fixed; z-index: 24; top: 91px; left: 50%; width: min(280px, calc(100vw - 40px)); padding: 12px 14px; border: 1px solid rgba(78,157,242,.46); border-radius: 15px; background: rgba(3,22,51,.91); box-shadow: 0 18px 42px rgba(0,7,24,.34); color: white; display: grid; gap: 4px; text-align: center; opacity: 0; pointer-events: none; transform: translate(-50%,-10px); transition: opacity .25s ease, transform .25s ease; }
-.archive-hotspot-card strong { font-size: 10px; }
-.archive-hotspot-card small { color: #a9c4e6; font-size: 7.5px; line-height: 1.7; }
-.archive-hotspot:hover .archive-hotspot-card, .archive-hotspot:focus-visible .archive-hotspot-card, .archive-hotspot.is-active .archive-hotspot-card { opacity: 1; transform: translate(-50%,0); }
 .welcome-hero-entry { position: absolute; z-index: 6; left: 6.4%; top: 67%; width: 36%; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .welcome-primary-action { min-height: 47px; padding: 0 19px; border: 1px solid rgba(255,255,255,.18); border-radius: 14px; background: #0b6fe7; color: white; display: inline-flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; cursor: pointer; box-shadow: 0 0 28px rgba(11,111,231,.36); transition: transform .22s ease, box-shadow .22s ease; }
 .welcome-primary-action:hover { transform: translateY(-2px); box-shadow: 0 0 40px rgba(11,111,231,.52); }
 [dir="rtl"] .welcome-primary-action svg:last-child { transform: rotate(180deg); }
-.welcome-archive-hint { padding: 7px 10px; border-radius: 10px; background: rgba(1,14,35,.58); color: #a6bfde; display: inline-flex; align-items: center; gap: 6px; font-size: 7px; }
 .welcome-mobile-dock { display: none; }
 .welcome-login-layer { position: fixed; z-index: 35; inset: 0; padding: 24px; background: rgba(0,8,22,.32); backdrop-filter: blur(9px); opacity: 0; visibility: hidden; transition: opacity .45s ease, visibility .45s ease; }
 .welcome-login-layer.is-open { opacity: 1; visibility: visible; }
@@ -1010,14 +997,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .welcome-dark .welcome-footer { color: #6f91ba; }
 .welcome-dark .eyebrow { color: #acc9e9; }
 .welcome-dark .preview-note { color: #d7b769; }
-.welcome-light .archive-hotspot { color: #9b6913; }
-.welcome-light .archive-hotspot:hover, .welcome-light .archive-hotspot:focus-visible, .welcome-light .archive-hotspot.is-active { border-color: rgba(193,139,34,.72); background: rgba(255,247,230,.22); box-shadow: 0 0 34px rgba(196,139,31,.28), inset 0 0 26px rgba(208,153,44,.12); }
-.welcome-light .archive-hotspot-focus { border-color: rgba(183,128,24,.38); background: rgba(255,251,242,.9); color: #9a6710; }
-.welcome-light .archive-hotspot-card { border-color: rgba(178,126,28,.36); background: rgba(255,252,246,.95); box-shadow: 0 18px 42px rgba(85,58,14,.18); color: #33240b; }
-.welcome-light .archive-hotspot-card small { color: #7d6843; }
 .welcome-light .welcome-primary-action { border-color: #d8ad5a; background: #b77d15; color: white; box-shadow: 0 0 28px rgba(183,125,21,.34); }
 .welcome-light .welcome-primary-action:hover { box-shadow: 0 0 40px rgba(183,125,21,.48); }
-.welcome-light .welcome-archive-hint { background: rgba(255,252,246,.76); color: #796440; }
 .welcome-light .welcome-login-layer { background: rgba(85,60,18,.18); }
 .welcome-light .welcome-login-panel { border-color: rgba(180,128,30,.45); background: rgba(255,252,246,.97); box-shadow: 0 32px 100px rgba(85,58,12,.24), 0 0 36px rgba(190,134,27,.15); color: #2e2414; }
 .welcome-light .welcome-login-close { border-color: rgba(173,124,32,.25); background: #fff8eb; color: #8e6111; }
@@ -1036,7 +1017,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .welcome-light .preview-note { color: #88600f; }
 
 @media (prefers-reduced-motion: reduce) {
-  .welcome-hero-image, .archive-hotspot, .archive-hotspot-card, .welcome-login-layer, .welcome-login-panel { transition-duration: .01ms !important; }
+  .welcome-hero-image, .welcome-login-layer, .welcome-login-panel { transition-duration: .01ms !important; }
   .welcome-unlock-layer, .welcome-unlock-mark .unlock-open, .welcome-unlock-mark .unlock-closed { animation-duration: .01ms !important; }
 }
 
@@ -1404,8 +1385,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 @media (max-width: 1080px) {
   body { overflow-y: auto; overflow-x: hidden; }
   .welcome-header { left: 18px; right: 18px; }
-  .welcome-archive-hint { display: none; }
-  .archive-hotspot-card { width: 180px; }
 }
 
 @media (max-width: 880px) {
@@ -1464,20 +1443,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   .welcome-header-login span { display: none; }
   .welcome-hero-stage { top: 76px; bottom: auto; height: auto; display: block; overflow: hidden; }
   .welcome-hero-frame { width: 100vw; }
-  .archive-hotspots, .welcome-hero-entry { display: none; }
+  .welcome-hero-entry { display: none; }
   .welcome-mobile-dock { position: relative; z-index: 8; width: calc(100% - 24px); margin: calc(76px + 52.52vw + 16px) auto 22px; padding: 12px; border: 1px solid rgba(157,112,29,.25); border-radius: 20px; background: rgba(255,251,243,.9); box-shadow: 0 18px 48px rgba(74,50,12,.16); backdrop-filter: blur(16px); display: grid; gap: 10px; }
   .welcome-dark .welcome-mobile-dock { border-color: #194470; background: rgba(5,25,54,.92); box-shadow: 0 20px 52px rgba(0,5,18,.38); }
-  .welcome-mobile-files { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; }
-  .welcome-mobile-files button { min-width: 0; min-height: 72px; padding: 9px 6px; border: 1px solid #dfcca7; border-radius: 14px; background: #fffaf1; color: #7a5b25; display: grid; place-items: center; align-content: center; gap: 6px; font-size: 7px; font-weight: 700; cursor: pointer; }
-  .welcome-mobile-files button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-  .welcome-mobile-files button.is-active { border-color: #b77d15; background: #f5e8ce; color: #80540b; box-shadow: 0 0 20px rgba(183,125,21,.18); }
-  .welcome-dark .welcome-mobile-files button { border-color: #1b4776; background: #071d3c; color: #9ec5ef; }
-  .welcome-dark .welcome-mobile-files button.is-active { border-color: #3189eb; background: #0b3263; color: white; box-shadow: 0 0 20px rgba(24,121,231,.25); }
-  .welcome-mobile-detail { min-height: 50px; padding: 9px 11px; border-radius: 13px; background: #fff7e8; display: grid; gap: 3px; }
-  .welcome-mobile-detail strong { font-size: 9px; }
-  .welcome-mobile-detail small { color: #7b6847; font-size: 7px; line-height: 1.6; }
-  .welcome-dark .welcome-mobile-detail { background: #061a36; }
-  .welcome-dark .welcome-mobile-detail small { color: #91accd; }
   .welcome-mobile-login { min-height: 47px; border: 1px solid #cb9a3d; border-radius: 14px; background: #b77d15; color: white; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 9px; font-weight: 700; cursor: pointer; }
   .welcome-dark .welcome-mobile-login { border-color: #2e8df5; background: #0b6fe7; box-shadow: 0 0 24px rgba(11,111,231,.24); }
   .welcome-footer { display: none; }

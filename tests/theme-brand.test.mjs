@@ -30,3 +30,15 @@ test("internal pearl and night theme overrides do not target evidence or export 
   assert.match(themeSection, /\.app-shell\.theme-dark/);
   assert.doesNotMatch(themeSection, /\.export-capture|\.phone-screen|\.iphone-evidence|\.message-proof|\.proof-details/);
 });
+
+test("keeps the signed-out hero static without archive hotspots or feature tiles", async () => {
+  const [app, css] = await Promise.all([
+    readFile(new URL("src/App.jsx", root), "utf8"),
+    readFile(new URL("src/styles.css", root), "utf8"),
+  ]);
+
+  assert.doesNotMatch(app, /activeArchive|archiveFeatures|archiveHint|archive-hotspot|welcome-mobile-files|welcome-mobile-detail/);
+  assert.doesNotMatch(css, /archive-hotspot|welcome-archive-hint|welcome-mobile-files|welcome-mobile-detail/);
+  assert.match(app, /className="welcome-primary-action"/);
+  assert.match(app, /className="welcome-mobile-login"/);
+});

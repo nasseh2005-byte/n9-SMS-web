@@ -23,7 +23,6 @@ import {
   mdiFileExcelOutline,
   mdiFileTableOutline,
   mdiFolderOutline,
-  mdiFolderLockOutline,
   mdiImageMultipleOutline,
   mdiInformationOutline,
   mdiLockOutline,
@@ -690,14 +689,8 @@ const welcomeCopy = {
     headerLogin: "تسجيل الدخول",
     unlockTitle: "جاري فتح البوابة الآمنة",
     unlockDescription: "يتم الآن التحقق من مسار الدخول",
-    archiveHint: "مرّر المؤشر أو اضغط على أي ملف لاكتشاف الوظيفة",
     closeLogin: "إغلاق تسجيل الدخول",
     backToHome: "العودة إلى الواجهة الرئيسية",
-    archiveFeatures: [
-      { title: "أرشيفات الشركات", text: "كل شركة في مساحة مستقلة ومحفوظة." },
-      { title: "المطابقة الذكية", text: "طابق أرقام Excel واختر الرسالة الدقيقة." },
-      { title: "التصدير الموثوق", text: "صدّر الأدلة كصور أو PDF أو ZIP." },
-    ],
     flowLabel: "طريقة العمل",
     importStep: "ارفع الأرشيف",
     importStepText: "استورد XML داخل مساحة الشركة الصحيحة.",
@@ -729,14 +722,8 @@ const welcomeCopy = {
     headerLogin: "Sign in",
     unlockTitle: "Opening the secure gateway",
     unlockDescription: "Preparing your protected sign-in path",
-    archiveHint: "Hover or select any archive to discover its function",
     closeLogin: "Close sign in",
     backToHome: "Back to the main screen",
-    archiveFeatures: [
-      { title: "Company archives", text: "Every company stays in its own protected workspace." },
-      { title: "Smart matching", text: "Match Excel identifiers and select the exact message." },
-      { title: "Trusted export", text: "Export evidence as images, PDF, or ZIP." },
-    ],
     flowLabel: "How it works",
     importStep: "Upload the archive",
     importStepText: "Import XML into the correct company workspace.",
@@ -766,7 +753,6 @@ function LoginScreen({ busy, error, onLogin }) {
   const [language, setLanguage] = useState(() => localStorage.getItem("n9-welcome-language") || "ar");
   const [welcomeTheme, setWelcomeTheme] = useState(() => localStorage.getItem("n9-welcome-theme-v3") || "light");
   const [entryPhase, setEntryPhase] = useState("closed");
-  const [activeArchive, setActiveArchive] = useState(null);
   const usernameRef = useRef(null);
   const unlockTimerRef = useRef(null);
   const copy = welcomeCopy[language];
@@ -842,26 +828,13 @@ function LoginScreen({ busy, error, onLogin }) {
         <div className="welcome-hero-frame">
           <img alt={copy.heroAlt} className={`welcome-hero-image welcome-hero-dark-image ${welcomeTheme === "dark" ? "is-visible" : ""}`} src="/og.png" />
           <img alt="" aria-hidden="true" className={`welcome-hero-image welcome-hero-light-image ${welcomeTheme === "light" ? "is-visible" : ""}`} src="/n9-hero-light.png" />
-          <div className="archive-hotspots" aria-label={copy.archiveHint}>
-            {copy.archiveFeatures.map((feature, index) => (
-              <button aria-pressed={activeArchive === index} className={`archive-hotspot archive-hotspot-${index + 1} ${activeArchive === index ? "is-active" : ""}`} key={feature.title} onClick={() => setActiveArchive((current) => current === index ? null : index)} type="button">
-                <span className="archive-hotspot-focus"><Icon path={index === 0 ? mdiFolderLockOutline : index === 1 ? mdiMagnify : mdiImageMultipleOutline} size={0.9} /></span>
-                <span className="archive-hotspot-card"><strong>{feature.title}</strong><small>{feature.text}</small></span>
-              </button>
-            ))}
-          </div>
           <div className="welcome-hero-entry">
             <button aria-expanded={entryPhase === "open"} className="welcome-primary-action" onClick={openLogin} type="button"><Icon path={mdiLockOutline} size={0.8} /><span>{copy.start}</span><Icon path={mdiChevronRight} size={0.82} /></button>
-            <span className="welcome-archive-hint"><Icon path={mdiFolderOutline} size={0.72} />{copy.archiveHint}</span>
           </div>
         </div>
       </section>
 
       <div className="welcome-mobile-dock">
-        <div className="welcome-mobile-files">
-          {copy.archiveFeatures.map((feature, index) => <button className={activeArchive === index ? "is-active" : ""} key={feature.title} onClick={() => setActiveArchive(index)} type="button"><Icon path={index === 0 ? mdiFolderLockOutline : index === 1 ? mdiMagnify : mdiImageMultipleOutline} size={0.78} /><span>{feature.title}</span></button>)}
-        </div>
-        {activeArchive !== null && <div className="welcome-mobile-detail"><strong>{copy.archiveFeatures[activeArchive].title}</strong><small>{copy.archiveFeatures[activeArchive].text}</small></div>}
         <button className="welcome-mobile-login" onClick={openLogin} type="button"><Icon path={mdiLockOutline} size={0.8} />{copy.start}</button>
       </div>
 
