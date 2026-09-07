@@ -4,7 +4,6 @@ import {
   mdiAlertCircleOutline,
   mdiAccount,
   mdiAccountMultipleOutline,
-  mdiBatteryHigh,
   mdiCameraOutline,
   mdiCellphoneScreenshot,
   mdiCheck,
@@ -44,7 +43,6 @@ import {
   mdiTuneVariant,
   mdiWeatherNight,
   mdiWhiteBalanceSunny,
-  mdiWifi,
 } from "@mdi/js";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
@@ -280,10 +278,17 @@ function StatusBar({ clockMode = "message", customTime = "09:41", deviceStyle = 
           </>
         ) : (
           <>
-            <Icon path={mdiSignal} size={0.62} />
-            <Icon path={mdiWifi} size={0.64} />
-            <span className="network-label">4G</span>
-            <Icon path={mdiBatteryHigh} size={0.78} />
+            <span className="cellular-bars" aria-hidden="true">
+              <i /><i /><i /><i />
+            </span>
+            <svg aria-hidden="true" className="status-wifi" viewBox="0 0 18 14">
+              <path d="M1.5 4.7a11.4 11.4 0 0 1 15 0" />
+              <path d="M4.3 7.7a7.2 7.2 0 0 1 9.4 0" />
+              <path d="M7.1 10.7a2.9 2.9 0 0 1 3.8 0" />
+              <circle cx="9" cy="12.4" r=".8" />
+            </svg>
+            <span className="network-label">{deviceStyle === "huawei" ? "4G+" : "4G"}</span>
+            <span className="status-battery" aria-hidden="true"><i /></span>
           </>
         )}
       </div>
@@ -1047,26 +1052,33 @@ function buildRecommendedSelections(terms, matches) {
   }));
 }
 
-function ConversationExportProgress({ progress }) {
+function ConversationExportProgress({ collapsed, onToggle, progress }) {
   const percent = Math.max(0, Math.min(100, Number(progress?.percent) || 0));
   return (
-    <div className="dialog-backdrop export-progress-backdrop" role="presentation">
-      <section aria-labelledby="conversation-export-title" aria-modal="true" className="conversation-export-progress" role="dialog">
-        <div className="export-progress-icon"><Icon path={mdiFolderOutline} size={1.15} /></div>
-        <div className="export-progress-heading">
-          <span className="eyebrow">تصدير المحادثة كاملة</span>
-          <h2 id="conversation-export-title">{progress.title}</h2>
-          <p>{progress.stage}</p>
+    <div aria-live="polite" className={`conversation-export-dock ${collapsed ? "is-collapsed" : ""}`} role="status">
+      <section aria-labelledby="conversation-export-title" className="conversation-export-progress">
+        <header className="export-progress-header">
+          <div className="export-progress-icon"><Icon path={mdiFolderOutline} size={1.05} /></div>
+          <div className="export-progress-heading">
+            <span className="eyebrow">تصدير في الخلفية</span>
+            <h2 id="conversation-export-title">{progress.title}</h2>
+          </div>
+          <strong className="export-progress-percent">{percent.toLocaleString("ar-SA")}٪</strong>
+          <button aria-label={collapsed ? "عرض تفاصيل التصدير" : "تصغير إشعار التصدير"} className="export-progress-toggle" onClick={onToggle} type="button">
+            <Icon path={mdiChevronDown} size={0.82} />
+          </button>
+        </header>
+        <div className="export-progress-body">
+          <p className="export-progress-stage">{progress.stage}</p>
+          <div aria-label="نسبة إنجاز تصدير المحادثة" aria-valuemax="100" aria-valuemin="0" aria-valuenow={percent} className="export-progress-track" role="progressbar">
+            <span style={{ width: `${percent}%` }} />
+          </div>
+          <div className="export-progress-meta">
+            <span>{progress.completed.toLocaleString("ar-SA")} من {progress.total.toLocaleString("ar-SA")} رسالة</span>
+            <span>PDF + Excel + ZIP</span>
+          </div>
+          <small>يمكنك متابعة استخدام الموقع؛ سيستمر التصدير في الخلفية ويبدأ التنزيل عند اكتماله.</small>
         </div>
-        <strong className="export-progress-percent">{percent.toLocaleString("ar-SA")}٪</strong>
-        <div aria-label="نسبة إنجاز تصدير المحادثة" aria-valuemax="100" aria-valuemin="0" aria-valuenow={percent} className="export-progress-track" role="progressbar">
-          <span style={{ width: `${percent}%` }} />
-        </div>
-        <div className="export-progress-meta">
-          <span>{progress.completed.toLocaleString("ar-SA")} من {progress.total.toLocaleString("ar-SA")} رسالة</span>
-          <span>PDF + Excel + ZIP</span>
-        </div>
-        <small>لا تغلق الصفحة حتى يكتمل التنزيل. تُحفظ كل رسالة كملف PDF مستقل دون تغيير بياناتها.</small>
       </section>
     </div>
   );
@@ -1095,6 +1107,7 @@ export function App() {
   const [batchSelection, setBatchSelection] = useState({});
   const [exportBusy, setExportBusy] = useState(false);
   const [conversationExportProgress, setConversationExportProgress] = useState(null);
+  const [conversationExportCollapsed, setConversationExportCollapsed] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("n9-app-theme-v2") || "light");
   const [deviceStyle, setDeviceStyle] = useState(() => localStorage.getItem("n9-phone-style") || "android");
   const [clockMode, setClockMode] = useState(() => localStorage.getItem("n9-phone-clock-mode") || "message");
@@ -1108,6 +1121,7 @@ export function App() {
   const [toast, setToast] = useState("");
   const [sheetReport, setSheetReport] = useState("");
   const [exportingMatch, setExportingMatch] = useState(null);
+  const [exportCaptureSettings, setExportCaptureSettings] = useState(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [loginBusy, setLoginBusy] = useState(false);
@@ -1420,8 +1434,10 @@ export function App() {
     }
   }
 
-  async function captureMessageImage(message) {
+  async function captureMessageImage(message, appearance = null) {
+    const captureSettings = appearance || { clockMode, customTime, deviceStyle, theme };
     setExportingMatch(message);
+    setExportCaptureSettings(captureSettings);
     await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
     await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
     if (!captureRef.current) throw new Error("capture-unavailable");
@@ -1429,7 +1445,7 @@ export function App() {
     return toPng(captureRef.current, {
       pixelRatio: 2,
       cacheBust: true,
-      backgroundColor: theme === "light" ? "#f7f9fc" : "#171a1d",
+      backgroundColor: captureSettings.theme === "light" ? "#f7f9fc" : "#171a1d",
     });
   }
 
@@ -1444,6 +1460,7 @@ export function App() {
       setToast("تعذر تصدير الصورة. أعد المحاولة بعد اكتمال تحميل الخط.");
     } finally {
       setExportingMatch(null);
+      setExportCaptureSettings(null);
       setExportBusy(false);
     }
   }
@@ -1461,19 +1478,21 @@ export function App() {
       setToast("تعذر إنشاء PDF لهذه الرسالة. أعد المحاولة.");
     } finally {
       setExportingMatch(null);
+      setExportCaptureSettings(null);
       setExportBusy(false);
     }
   }
 
   async function exportAllImages() {
     if (!batchExportItems.length || exportBusy) return;
+    const exportAppearance = { clockMode, customTime, deviceStyle, theme };
     const zip = new JSZip();
     const fileNames = buildUniqueEvidenceNames(batchExportItems, "png");
     setExportBusy(true);
     setToast(`جاري تجهيز ${batchExportItems.length.toLocaleString("ar-SA")} صورة محددة`);
     try {
       for (let index = 0; index < batchExportItems.length; index += 1) {
-        const dataUrl = await captureMessageImage(batchExportItems[index].message);
+        const dataUrl = await captureMessageImage(batchExportItems[index].message, exportAppearance);
         if (batchExportItems.length === 1) {
           downloadDataUrl(dataUrl, fileNames[index]);
         } else {
@@ -1490,20 +1509,22 @@ export function App() {
       setToast("تعذر إكمال ملف الصور. جرّب تحديد عدد أقل ثم أعد المحاولة.");
     } finally {
       setExportingMatch(null);
+      setExportCaptureSettings(null);
       setExportBusy(false);
     }
   }
 
   async function exportAllPdfs() {
     if (!batchExportItems.length || exportBusy) return;
+    const exportAppearance = { clockMode, customTime, deviceStyle, theme };
     const zip = new JSZip();
     const fileNames = buildUniqueEvidenceNames(batchExportItems, "pdf");
     setExportBusy(true);
     setToast(`جاري إنشاء ${batchExportItems.length.toLocaleString("ar-SA")} ملف PDF`);
     try {
       for (let index = 0; index < batchExportItems.length; index += 1) {
-        const dataUrl = await captureMessageImage(batchExportItems[index].message);
-        const jpeg = await imageDataUrlToJpeg(dataUrl, theme === "light" ? "#f7f9fc" : "#171a1d");
+        const dataUrl = await captureMessageImage(batchExportItems[index].message, exportAppearance);
+        const jpeg = await imageDataUrlToJpeg(dataUrl, exportAppearance.theme === "light" ? "#f7f9fc" : "#171a1d");
         const pdf = createJpegPdf([jpeg]);
         if (batchExportItems.length === 1) {
           downloadBlob(pdf, fileNames[index]);
@@ -1521,6 +1542,7 @@ export function App() {
       setToast("تعذر إكمال ملفات PDF. جرّب تحديد عدد أقل ثم أعد المحاولة.");
     } finally {
       setExportingMatch(null);
+      setExportCaptureSettings(null);
       setExportBusy(false);
     }
   }
@@ -1538,8 +1560,10 @@ export function App() {
     ));
     const zipWriter = new StoredZipBuilder();
     const addArchiveEntry = (path, data) => zipWriter.addFile(path, data);
+    const exportAppearance = { clockMode, customTime, deviceStyle, theme };
 
     setExportBusy(true);
+    setConversationExportCollapsed(false);
     setConversationExportProgress({
       percent: 0,
       completed: 0,
@@ -1557,8 +1581,8 @@ export function App() {
           stage: `إنشاء PDF للرسالة ${(index + 1).toLocaleString("ar-SA")}…`,
           title: conversationTitle,
         });
-        const dataUrl = await captureMessageImage(conversationMessages[index]);
-        const jpeg = await imageDataUrlToJpeg(dataUrl, theme === "light" ? "#f7f9fc" : "#171a1d", 0.9);
+        const dataUrl = await captureMessageImage(conversationMessages[index], exportAppearance);
+        const jpeg = await imageDataUrlToJpeg(dataUrl, exportAppearance.theme === "light" ? "#f7f9fc" : "#171a1d", 0.9);
         const pdf = createJpegPdf([jpeg]);
         addArchiveEntry(`PDF/${pdfFileNames[index]}`, new Uint8Array(await pdf.arrayBuffer()));
         setConversationExportProgress({
@@ -1625,6 +1649,7 @@ export function App() {
     } finally {
       setConversationExportProgress(null);
       setExportingMatch(null);
+      setExportCaptureSettings(null);
       setExportBusy(false);
     }
   }
@@ -2099,11 +2124,11 @@ export function App() {
       {canCreateManualMessages && composerOpen && <MessageComposerDialog busy={busy} conversations={conversations} onClose={() => { if (!busy) { setComposerOpen(false); setActiveNav("messages"); } }} onCreate={handleCreateManualMessage} selectedAddress={selectedConversation?.address} />}
       {workspaceDialogOpen && <WorkspaceDialog activeId={activeWorkspace?.id} busy={managementBusy} onClose={() => setWorkspaceDialogOpen(false)} onCreate={handleCreateWorkspace} onSelect={handleSelectWorkspace} workspaces={workspaces} />}
       {usersDialogOpen && <UsersDialog currentUser={currentUser} loading={managementBusy} onClose={() => setUsersDialogOpen(false)} onCreate={handleCreateUser} onUpdate={handleUpdateUser} users={users} workspaces={workspaces} />}
-      {conversationExportProgress && <ConversationExportProgress progress={conversationExportProgress} />}
+      {conversationExportProgress && <ConversationExportProgress collapsed={conversationExportCollapsed} onToggle={() => setConversationExportCollapsed((current) => !current)} progress={conversationExportProgress} />}
       {toast && <div className="toast" role="status"><Icon path={mdiCheckCircle} size={0.82} />{toast}</div>}
 
-      <div className={`export-capture ${deviceStyle === "iphone" ? "iphone-export-capture" : ""}`} aria-hidden="true">
-        <div ref={captureRef}><EvidencePhone capture clockMode={clockMode} customTime={customTime} deviceStyle={deviceStyle} message={exportingMatch || selectedMessage} theme={theme} /></div>
+      <div className={`export-capture ${(exportCaptureSettings?.deviceStyle || deviceStyle) === "iphone" ? "iphone-export-capture" : ""}`} aria-hidden="true">
+        <div ref={captureRef}><EvidencePhone capture clockMode={exportCaptureSettings?.clockMode || clockMode} customTime={exportCaptureSettings?.customTime || customTime} deviceStyle={exportCaptureSettings?.deviceStyle || deviceStyle} message={exportingMatch || selectedMessage} theme={exportCaptureSettings?.theme || theme} /></div>
       </div>
     </main>
   );
