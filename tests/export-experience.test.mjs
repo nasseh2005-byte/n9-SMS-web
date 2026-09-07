@@ -14,7 +14,6 @@ test("Android and Huawei status bars use proportioned native-style indicators", 
   assert.match(statusBar, /className="cellular-bars"/);
   assert.match(statusBar, /className="status-wifi"/);
   assert.match(statusBar, /className="status-battery"/);
-  assert.match(statusBar, /deviceStyle === "huawei" \? "4G\+" : "4G"/);
   assert.match(styles, /\.cellular-bars i:nth-child\(4\) \{ height: 11px; \}/);
   assert.match(styles, /\.status-battery::after/);
 });

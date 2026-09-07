@@ -287,7 +287,6 @@ function StatusBar({ clockMode = "message", customTime = "09:41", deviceStyle = 
               <path d="M7.1 10.7a2.9 2.9 0 0 1 3.8 0" />
               <circle cx="9" cy="12.4" r=".8" />
             </svg>
-            <span className="network-label">{deviceStyle === "huawei" ? "4G+" : "4G"}</span>
             <span className="status-battery" aria-hidden="true"><i /></span>
           </>
         )}

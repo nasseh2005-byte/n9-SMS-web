@@ -396,20 +396,26 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 
 .status-clock { min-width: 44px; font-variant-numeric: tabular-nums; letter-spacing: -.15px; white-space: nowrap; }
 .phone-status-icons { display: flex; align-items: center; gap: 3px; }
+.device-android .phone-statusbar,
+.device-huawei .phone-statusbar {
+  height: 42px;
+  padding: 0 22px;
+  font: 600 13px/1 "Segoe UI", Arial, sans-serif;
+}
 .device-android .status-clock,
-.device-huawei .status-clock { min-width: 52px; letter-spacing: -.18px; font-weight: 700; }
-.phone-status-icons.is-android { min-width: 72px; justify-content: flex-end; gap: 4px; color: #f3f5f7; }
+.device-huawei .status-clock { min-width: 52px; letter-spacing: 0; font-weight: 600; }
+.phone-status-icons.is-android { min-width: 66px; height: 16px; justify-content: flex-end; gap: 5px; color: inherit; }
 .network-label { min-width: 15px; font-size: 7.2px; font-weight: 800; line-height: 1; letter-spacing: -.15px; text-align: center; }
-.cellular-bars { width: 13px; height: 11px; display: inline-flex; align-items: flex-end; justify-content: center; gap: 1.2px; }
+.cellular-bars { width: 13px; height: 11px; display: inline-flex; align-items: flex-end; justify-content: center; gap: 1px; }
 .cellular-bars i { width: 2px; border-radius: .8px .8px 0 0; background: currentColor; opacity: .96; }
 .cellular-bars i:nth-child(1) { height: 3px; }
 .cellular-bars i:nth-child(2) { height: 5px; }
 .cellular-bars i:nth-child(3) { height: 8px; }
 .cellular-bars i:nth-child(4) { height: 11px; }
-.status-wifi { width: 14px; height: 11px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.55; stroke-linecap: round; }
+.status-wifi { width: 17px; height: 14px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
 .status-wifi circle { fill: currentColor; stroke: none; }
-.status-battery { width: 18px; height: 9px; position: relative; display: inline-flex; align-items: center; padding: 1.5px; border: 1.15px solid currentColor; border-radius: 2.2px; opacity: .97; }
-.status-battery::after { content: ""; width: 1.5px; height: 4px; position: absolute; right: -2.6px; top: 1.35px; border-radius: 0 1px 1px 0; background: currentColor; }
+.status-battery { width: 22px; height: 11px; position: relative; display: inline-flex; align-items: center; padding: 1.5px; margin-right: 2px; border: 1.25px solid currentColor; border-radius: 2.5px; }
+.status-battery::after { content: ""; width: 2px; height: 4px; position: absolute; right: -3px; top: 2.25px; border-radius: 0 1px 1px 0; background: currentColor; }
 .status-battery i { width: 72%; height: 100%; display: block; border-radius: .7px; background: currentColor; }
 
 .phone-conversation-header, .details-header {
@@ -704,7 +710,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 
 .device-cutout, .ios-home-indicator { display: none; }
 .device-android .device-cutout,
-.device-huawei .device-cutout { width: 8px; height: 8px; display: block; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); border-radius: 50%; background: #080a0d; box-shadow: 0 0 0 1px rgba(255,255,255,.08), inset 0 0 0 2px #020304; }
+.device-huawei .device-cutout { width: 10px; height: 10px; display: block; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 50%; background: #080a0d; box-shadow: 0 0 0 1px rgba(255,255,255,.08), inset 0 0 0 2px #020304; }
 .device-android .device-cutout-lens,
 .device-huawei .device-cutout-lens { display: none; }
 
@@ -841,7 +847,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 
 .phone-frame.frame-huawei { border-radius: 38px; background: linear-gradient(145deg,#17191e,#08090c); box-shadow: 0 24px 58px rgba(34,38,48,.27), inset 0 0 0 1px #3b414a; }
 .device-huawei { border-radius: 30px; background: #17191e; }
-.device-huawei .phone-statusbar { height: 34px; padding: 8px 15px 2px; }
 .device-huawei .phone-conversation-header { height: 58px; border-bottom-color: rgba(255,255,255,.07); }
 .device-huawei .phone-avatar { border-radius: 11px; background: linear-gradient(145deg,#d8e4f7,#9db8df); }
 .device-huawei .date-chip { background: transparent; color: #8d96a3; }
