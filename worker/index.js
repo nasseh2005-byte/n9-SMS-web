@@ -1,3 +1,5 @@
+import { CONVERSATION_READ_ONLY, conversationCatalogue, conversationPage, decodeConversationPolicy, filterConversationArchive, validateConversationPolicy } from "../src/conversationAccess.js";
+
 const SESSION_COOKIE = "n9_session";
 const SESSION_TTL = 60 * 60 * 24 * 7;
 const PASSWORD_ITERATIONS = 210000;
@@ -25,6 +27,11 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS sessions (
     token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL,
     created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS conversation_permissions (
+    user_id TEXT NOT NULL, workspace_id TEXT NOT NULL,
+    addresses TEXT NOT NULL, revision TEXT NOT NULL,
+    PRIMARY KEY (user_id,workspace_id)
   )`,
   "CREATE INDEX IF NOT EXISTS idx_workspace_members_user_id ON workspace_members(user_id)",
   "CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)",
@@ -176,6 +183,45 @@ async function canAccess(env, user, workspaceId) {
   ).bind(workspaceId, user.id).first());
 }
 
+async function conversationPolicy(env, user, workspaceId) {
+  if (user.role === "admin") return decodeConversationPolicy(null);
+  return decodeConversationPolicy(await env.DB.prepare("SELECT addresses,revision FROM conversation_permissions WHERE user_id=? AND workspace_id=?").bind(user.id, workspaceId).first());
+}
+
+async function conversationPermissionsRoute(request, env, match) {
+  const userId = decodeURIComponent(match[1]);
+  const workspaceId = decodeURIComponent(match[2]);
+  const target = await env.DB.prepare("SELECT id,role FROM users WHERE id=?").bind(userId).first();
+  if (!target) return fail("المستخدم غير موجود.", 404);
+  if (target.role === "admin") return fail("المشرف يرى جميع المحادثات.");
+  if (!(await canAccess(env, target, workspaceId))) return fail("احفظ تفويض الشركة لهذا المستخدم أولًا.", 403);
+  const workspace = await env.DB.prepare("SELECT * FROM workspaces WHERE id=?").bind(workspaceId).first();
+  if (!workspace) return fail("الشركة غير موجودة.", 404);
+  const policy = await conversationPolicy(env, target, workspaceId);
+  const object = workspace.archive_key ? await env.FILES.get(workspace.archive_key) : null;
+  if (workspace.archive_key && !object) return fail("تعذر العثور على الأرشيف.", 404);
+  const catalogue = conversationCatalogue(object ? (await object.json()).messages : []);
+  if (request.method === "GET") {
+    const page = conversationPage(catalogue, new URL(request.url), `${workspace.archive_key || "empty"}:${policy.revision}`);
+    return json({ policy, conversations: page.items, nextCursor: page.nextCursor, revision: page.revision });
+  }
+  if (request.method === "PATCH") {
+    if (!sameOrigin(request)) return fail("تعذر التحقق من مصدر الطلب.", 403);
+    const input = await readJson(request);
+    const next = validateConversationPolicy(input);
+    if (input.expectedRevision !== policy.revision) return fail("تغيرت الصلاحيات. أعد فتح نافذة الاختيار.", 409);
+    const known = new Set([...catalogue.map((item) => item.address), ...policy.addresses]);
+    if (next.addresses.some((address) => !known.has(address))) return fail("تتضمن الصلاحيات محادثة غير موجودة.");
+    const result = await env.DB.prepare(`INSERT INTO conversation_permissions (user_id,workspace_id,addresses,revision)
+      SELECT ?,?,?,? WHERE COALESCE((SELECT revision FROM conversation_permissions WHERE user_id=? AND workspace_id=?),'legacy')=?
+      ON CONFLICT (user_id,workspace_id) DO UPDATE SET addresses=excluded.addresses,revision=excluded.revision WHERE conversation_permissions.revision=?`)
+      .bind(userId, workspaceId, next.mode === "all" ? "null" : JSON.stringify(next.addresses), crypto.randomUUID(), userId, workspaceId, input.expectedRevision, input.expectedRevision).run();
+    if (!result.meta?.changes) return fail("تغيرت الصلاحيات. أعد فتح نافذة الاختيار.", 409);
+    return json({ ok: true });
+  }
+  return fail("الطريقة غير مدعومة.", 405);
+}
+
 async function workspaceIdsAreValid(env, workspaceIds) {
   for (const workspaceId of workspaceIds) {
     if (!(await env.DB.prepare("SELECT id FROM workspaces WHERE id=?").bind(workspaceId).first())) return false;
@@ -192,9 +238,12 @@ async function listWorkspaces(env, user) {
         FROM workspaces JOIN workspace_members ON workspace_members.workspace_id=workspaces.id
         WHERE workspace_members.user_id=? ORDER BY workspaces.updated_at DESC,workspaces.name ASC`).bind(user.id);
   const result = await statement.all();
+  const permissions = user.role === "admin" ? [] : (await env.DB.prepare("SELECT workspace_id,addresses,revision FROM conversation_permissions WHERE user_id=?").bind(user.id).all()).results || [];
+  const policies = new Map(permissions.map((row) => [row.workspace_id, decodeConversationPolicy(row)]));
   return (result.results || []).map((row) => ({
-    id: row.id, name: row.name, sourceName: row.source_name || "لا يوجد ملف بعد",
-    messageCount: Number(row.message_count || 0), createdAt: Number(row.created_at), updatedAt: Number(row.updated_at),
+    id: row.id, name: row.name, sourceName: policies.get(row.id)?.mode === "selected" ? "المحادثات المصرح بها" : row.source_name || "لا يوجد ملف بعد",
+    messageCount: policies.get(row.id)?.mode === "selected" ? 0 : Number(row.message_count || 0), createdAt: Number(row.created_at), updatedAt: Number(row.updated_at),
+    readOnly: policies.get(row.id)?.mode === "selected", accessRevision: policies.get(row.id)?.revision || "legacy",
   }));
 }
 
@@ -224,6 +273,8 @@ async function login(request, env) {
 
 async function usersRoute(request, env, user, path) {
   if (user.role !== "admin") return fail("هذه الصلاحية متاحة للمدير فقط.", 403);
+  const conversationMatch = path.match(/^\/api\/users\/([^/]+)\/workspaces\/([^/]+)\/conversations$/);
+  if (conversationMatch) return conversationPermissionsRoute(request, env, conversationMatch);
   if (request.method === "GET" && path === "/api/users") {
     const result = await env.DB.prepare(`SELECT users.id,users.username,users.display_name,users.role,users.active,
       GROUP_CONCAT(workspace_members.workspace_id) AS workspace_ids
@@ -259,6 +310,9 @@ async function usersRoute(request, env, user, path) {
       ...workspaceIds.map((workspaceId) => env.DB.prepare(
         "INSERT OR IGNORE INTO workspace_members (workspace_id,user_id,created_at) VALUES (?,?,?)",
       ).bind(workspaceId, id, now)),
+      ...workspaceIds.filter(() => role !== "admin").map((workspaceId) => env.DB.prepare(
+        "INSERT INTO conversation_permissions (user_id,workspace_id,addresses,revision) VALUES (?,?,'[]',?)",
+      ).bind(id, workspaceId, crypto.randomUUID())),
     ]);
     return json({ user: { id, username, displayName, role, active: true, workspaceIds } }, 201);
   }
@@ -285,6 +339,10 @@ async function usersRoute(request, env, user, path) {
       statements.push(env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(targetId));
     }
     if (workspaceIds) {
+      if (role !== "admin") statements.push(...workspaceIds.map((workspaceId) => env.DB.prepare(`
+        INSERT OR IGNORE INTO conversation_permissions (user_id,workspace_id,addresses,revision)
+        SELECT ?,?,'[]',? WHERE NOT EXISTS (SELECT 1 FROM workspace_members WHERE user_id=? AND workspace_id=?)`)
+        .bind(targetId, workspaceId, crypto.randomUUID(), targetId, workspaceId)));
       statements.push(env.DB.prepare("DELETE FROM workspace_members WHERE user_id=?").bind(targetId));
       statements.push(...workspaceIds.map((workspaceId) => env.DB.prepare(
         "INSERT OR IGNORE INTO workspace_members (workspace_id,user_id,created_at) VALUES (?,?,?)",
@@ -320,13 +378,23 @@ async function workspacesRoute(request, env, user, path) {
   if (!(await canAccess(env, user, workspaceId))) return fail("لا تملك صلاحية هذه الشركة.", 403);
   const workspace = await env.DB.prepare("SELECT * FROM workspaces WHERE id=?").bind(workspaceId).first();
   if (!workspace) return fail("الشركة غير موجودة.", 404);
+  const policy = await conversationPolicy(env, user, workspaceId);
   if (request.method === "GET") {
     if (!workspace.archive_key) return json({ sourceName: "لا يوجد ملف بعد", messages: [] });
     const object = await env.FILES.get(workspace.archive_key);
     if (!object) return fail("تعذر العثور على أرشيف هذه الشركة.", 404);
+    if (!(await canAccess(env, user, workspaceId))) return fail("لا تملك صلاحية هذه الشركة.", 403);
+    const latestPolicy = await conversationPolicy(env, user, workspaceId);
+    if (latestPolicy.revision !== policy.revision) return fail("تغيرت صلاحيات المحادثات. أعد تحميل الأرشيف.", 409);
+    if (policy.mode === "selected") {
+      const filtered = filterConversationArchive(await object.json(), policy);
+      const page = conversationPage(filtered.messages, new URL(request.url), `${workspace.archive_key}:${policy.revision}`);
+      return json({ ...filtered, messages: page.items, nextCursor: page.nextCursor, revision: page.revision });
+    }
     return new Response(object.body, { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   }
   if (request.method === "PUT") {
+    if (policy.mode === "selected") return fail(CONVERSATION_READ_ONLY, 403);
     if (!sameOrigin(request)) return fail("تعذر التحقق من مصدر الطلب.", 403);
     if (Number(request.headers.get("content-length") || 0) > MAX_ARCHIVE_BYTES) return fail("حجم الأرشيف أكبر من الحد الآمن للحفظ.", 413);
     const raw = await request.text();
@@ -349,8 +417,14 @@ async function workspacesRoute(request, env, user, path) {
       httpMetadata: { contentType: "application/json; charset=utf-8" },
     });
     const oldKey = workspace.archive_key;
-    await env.DB.prepare("UPDATE workspaces SET source_name=?,message_count=?,archive_key=?,updated_at=? WHERE id=?")
-      .bind(sourceName, body.messages.length, key, Date.now(), workspaceId).run();
+    const saved = await env.DB.prepare(`UPDATE workspaces SET source_name=?,message_count=?,archive_key=?,updated_at=? WHERE id=?
+      AND (?='admin' OR (EXISTS (SELECT 1 FROM workspace_members WHERE user_id=? AND workspace_id=workspaces.id)
+        AND NOT EXISTS (SELECT 1 FROM conversation_permissions WHERE user_id=? AND workspace_id=workspaces.id AND addresses<>'null')))`)
+      .bind(sourceName, body.messages.length, key, Date.now(), workspaceId, user.role, user.id, user.id).run();
+    if (!saved.meta.changes) {
+      await env.FILES.delete(key).catch(() => {});
+      return fail("تغيرت صلاحية حفظ الأرشيف. لم تتغير النسخة المحفوظة.", 403);
+    }
     if (oldKey && oldKey !== key) await env.FILES.delete(oldKey).catch(() => {});
     return json({ ok: true, messageCount: body.messages.length, sourceName });
   }
@@ -385,7 +459,7 @@ async function handleApi(request, env) {
     if (path === "/api/workspaces" || path.startsWith("/api/workspaces/")) return workspacesRoute(request, env, user, path);
     return fail("المسار غير موجود.", 404);
   } catch (error) {
-    return fail(error?.message || "حدث خطأ غير متوقع في الخادم.", 500);
+    return fail(error?.message || "حدث خطأ غير متوقع في الخادم.", [400, 409].includes(error.status) ? error.status : 500);
   }
 }
 
@@ -403,4 +477,4 @@ export default {
   },
 };
 
-export { createPasswordRecord, derivePassword, handleApi, hasManualMessageChanges, verifyPassword };
+export { createPasswordRecord, derivePassword, handleApi, hasManualMessageChanges, verifyPassword, workspacesRoute, usersRoute };

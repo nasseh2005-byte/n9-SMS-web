@@ -1150,6 +1150,21 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .workspace-permissions { display: flex; flex-wrap: wrap; gap: 7px; }
 .workspace-permissions label { min-height: 30px; padding: 0 9px; border: 1px solid #e0e5ec; border-radius: 10px; background: #f8fafc; }
 .user-access-actions { display: flex; align-items: center; gap: 8px; }
+.conversation-permissions-editor { border-top: 1px solid var(--line); padding-top: 12px; }
+.conversation-permissions-open { padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface, #fff); color: var(--ink); cursor: pointer; font-size: 10px; }
+.conversation-permissions-content { display: grid; gap: 12px; margin-top: 12px; }
+.conversation-permissions-content > label { display: grid; gap: 5px; font-size: 10px; }
+.conversation-permissions-content select, .conversation-permissions-content > input { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface, #fff); color: var(--ink); }
+.conversation-permissions-content p { margin: 0; font-size: 10px; line-height: 1.9; color: var(--muted); }
+.conversation-permissions-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 10px; }
+.conversation-permissions-tools button, .conversation-permissions-list > button { border: 1px solid var(--line); border-radius: 8px; padding: 7px; background: var(--surface, #fff); color: var(--ink); cursor: pointer; font-size: 9px; }
+.conversation-permissions-list { max-height: 240px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; padding: 6px; }
+.conversation-permissions-list label { display: flex; gap: 10px; padding: 10px; align-items: center; cursor: pointer; }
+.conversation-permissions-list label + label { border-top: 1px solid var(--line); }
+.conversation-permissions-list input { width: 17px; height: 17px; accent-color: var(--blue); flex-shrink: 0; }
+.conversation-permissions-list label span { display: grid; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
+.conversation-permissions-list strong { font-size: 11px; }
+.conversation-permissions-list small { font-size: 9px; color: var(--muted); }
 .user-password-reset { width: min(230px, 100%); height: 33px; padding: 0 9px; border: 1px solid #dfe5ed; border-radius: 10px; background: #f8fafc; color: #778294; display: flex; align-items: center; gap: 6px; }
 .user-password-reset input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; font-size: 8px; direction: ltr; }
 .save-permissions { justify-self: start; min-height: 33px; padding: 0 12px; border: 0; border-radius: 10px; background: #e8f0fe; color: #174ea6; font-size: 8px; font-weight: 700; cursor: pointer; }

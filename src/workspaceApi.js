@@ -9,6 +9,7 @@ import {
   localLogout,
   localSaveArchive,
   localUpdateUser,
+  localConversationPermissions,
 } from "./localWorkspaceStore.js";
 
 const storageMode = import.meta.env.VITE_N9_STORAGE_MODE || "server";
@@ -65,17 +66,45 @@ export async function createWorkspace(name) {
   return (await request("/api/workspaces", { method: "POST", body: JSON.stringify({ name }) })).workspace;
 }
 
-export function getWorkspaceArchive(workspaceId) {
+export async function getWorkspaceArchive(workspaceId) {
   if (localMode) return localGetArchive(workspaceId);
-  if (!vercelMode) return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/archive`);
-  return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/archive`).then(async (descriptor) => {
-    if (!descriptor.archiveUrl) return descriptor;
+  const path = `/api/workspaces/${encodeURIComponent(workspaceId)}/archive`;
+  const descriptor = await request(path);
+  if (descriptor.archiveUrl) {
     const response = await fetch(descriptor.archiveUrl, { cache: "no-store" });
     if (!response.ok) throw new Error("تعذر تنزيل أرشيف الشركة من التخزين السحابي.");
     const archive = await response.json();
     if (!Array.isArray(archive?.messages)) throw new Error("الأرشيف السحابي غير صالح.");
     return archive;
-  });
+  }
+  const messages = [...(descriptor.messages || [])];
+  let cursor = descriptor.nextCursor;
+  while (cursor !== null && cursor !== undefined) {
+    const page = await request(`${path}?cursor=${cursor}&revision=${encodeURIComponent(descriptor.revision)}`);
+    messages.push(...page.messages);
+    if (page.nextCursor !== null && page.nextCursor <= cursor) throw new Error("تعذر متابعة تحميل المحادثات.");
+    cursor = page.nextCursor;
+  }
+  return { ...descriptor, messages };
+}
+
+export async function getConversationPermissions(userId, workspaceId) {
+  if (localMode) return localConversationPermissions(userId, workspaceId);
+  const path = `/api/users/${encodeURIComponent(userId)}/workspaces/${encodeURIComponent(workspaceId)}/conversations`;
+  const result = await request(path);
+  let cursor = result.nextCursor;
+  while (cursor !== null && cursor !== undefined) {
+    const page = await request(`${path}?cursor=${cursor}&revision=${encodeURIComponent(result.revision)}`);
+    result.conversations.push(...page.conversations);
+    if (page.nextCursor !== null && page.nextCursor <= cursor) throw new Error("تعذر متابعة تحميل المحادثات.");
+    cursor = page.nextCursor;
+  }
+  return result;
+}
+
+export function saveConversationPermissions(userId, workspaceId, input) {
+  return localMode ? localConversationPermissions(userId, workspaceId, input)
+    : request(`/api/users/${encodeURIComponent(userId)}/workspaces/${encodeURIComponent(workspaceId)}/conversations`, { method: "PATCH", body: JSON.stringify(input) });
 }
 
 export async function saveWorkspaceArchive(workspaceId, messages, sourceName) {

@@ -1,5 +1,6 @@
 import { loadCurrentArchive, loadWorkspaceArchive, saveWorkspaceArchive } from "./localStore.js";
 import { hasManualMessageChanges } from "./archivePermissions.js";
+import { CONVERSATION_READ_ONLY, conversationCatalogue, decodeConversationPolicy, filterConversationArchive, validateConversationPolicy } from "./conversationAccess.js";
 
 const DATABASE_NAME = "n9-sms-access-local";
 const DATABASE_VERSION = 1;
@@ -91,7 +92,11 @@ function safeUser(user) {
 
 function visibleWorkspaces(state, user) {
   const allowed = new Set(user.workspaceIds || []);
-  return state.workspaces.filter((workspace) => user.role === "admin" || allowed.has(workspace.id));
+  return state.workspaces.filter((workspace) => user.role === "admin" || allowed.has(workspace.id)).map((workspace) => {
+    const policy = user.role === "admin" ? decodeConversationPolicy(null) : decodeConversationPolicy(user.conversationPermissions?.[workspace.id]);
+    return { ...workspace, readOnly: policy.mode === "selected", accessRevision: policy.revision,
+      ...(policy.mode === "selected" ? { sourceName: "المحادثات المصرح بها", messageCount: 0 } : {}) };
+  });
 }
 
 export async function initializeLocalWorkspaceStore(sampleMessages) {
@@ -172,9 +177,13 @@ export async function localCreateWorkspace(name) {
 }
 
 export async function localGetArchive(workspaceId) {
-  const workspaces = await localListWorkspaces();
+  const state = await readState();
+  const user = state.users.find((item) => item.id === state.sessionUserId && item.active);
+  if (!user) throw new Error("يجب تسجيل الدخول أولًا.");
+  const workspaces = visibleWorkspaces(state, user);
   if (!workspaces.some((workspace) => workspace.id === workspaceId)) throw new Error("لا تملك صلاحية هذه الشركة.");
-  return (await loadWorkspaceArchive(workspaceId)) || { sourceName: "لا يوجد ملف بعد", messages: [] };
+  const archive = (await loadWorkspaceArchive(workspaceId)) || { sourceName: "لا يوجد ملف بعد", messages: [] };
+  return filterConversationArchive(archive, user.role === "admin" ? decodeConversationPolicy(null) : decodeConversationPolicy(user.conversationPermissions?.[workspaceId]));
 }
 
 export async function localSaveArchive(workspaceId, messages, sourceName) {
@@ -182,6 +191,7 @@ export async function localSaveArchive(workspaceId, messages, sourceName) {
   const user = state.users.find((item) => item.id === state.sessionUserId && item.active);
   const workspace = state.workspaces.find((item) => item.id === workspaceId);
   if (!user || !workspace || (user.role !== "admin" && !(user.workspaceIds || []).includes(workspaceId))) throw new Error("لا تملك صلاحية هذه الشركة.");
+  if (user.role !== "admin" && decodeConversationPolicy(user.conversationPermissions?.[workspaceId]).mode === "selected") throw new Error(CONVERSATION_READ_ONLY);
   const previousArchive = await loadWorkspaceArchive(workspaceId);
   if (user.role !== "admin" && hasManualMessageChanges(previousArchive?.messages, messages)) {
     throw new Error("منشئ الرسالة متاح للمشرف فقط.");
@@ -215,6 +225,7 @@ export async function localCreateUser(input) {
     role: input.role === "admin" ? "admin" : "user",
     active: true,
     workspaceIds: [...new Set(input.workspaceIds || [])],
+    conversationPermissions: Object.fromEntries((input.workspaceIds || []).map((workspaceId) => [workspaceId, { addresses: "[]", revision: crypto.randomUUID() }])),
     salt,
     pinHash: await hashPin(input.password, salt),
     failedAttempts: 0,
@@ -235,11 +246,40 @@ export async function localUpdateUser(userId, input) {
   if (input.displayName !== undefined) user.displayName = input.displayName;
   if (input.role !== undefined) user.role = input.role === "admin" ? "admin" : "user";
   if (input.active !== undefined) user.active = Boolean(input.active);
-  if (input.workspaceIds !== undefined) user.workspaceIds = [...new Set(input.workspaceIds)];
+  if (input.workspaceIds !== undefined) {
+    user.conversationPermissions ||= {};
+    for (const workspaceId of input.workspaceIds) {
+      if (!user.workspaceIds?.includes(workspaceId) && !user.conversationPermissions[workspaceId]) {
+        user.conversationPermissions[workspaceId] = { addresses: "[]", revision: crypto.randomUUID() };
+      }
+    }
+    user.workspaceIds = [...new Set(input.workspaceIds)];
+  }
   if (input.password) {
     user.salt = crypto.randomUUID();
     user.pinHash = await hashPin(input.password, user.salt);
   }
   await writeState(state);
   return { ...safeUser(user), workspaceIds: user.workspaceIds || [] };
+}
+
+export async function localConversationPermissions(userId, workspaceId, input) {
+  const state = await readState();
+  const admin = state.users.find((item) => item.id === state.sessionUserId && item.active);
+  if (!admin || admin.role !== "admin") throw new Error("هذه الصلاحية متاحة للمدير فقط.");
+  const target = state.users.find((item) => item.id === userId);
+  if (!target || target.role === "admin") throw new Error("اختر مستخدمًا عاديًا.");
+  if (!target.workspaceIds?.includes(workspaceId)) throw new Error("احفظ تفويض الشركة لهذا المستخدم أولًا.");
+  const policy = decodeConversationPolicy(target.conversationPermissions?.[workspaceId]);
+  const archive = await loadWorkspaceArchive(workspaceId);
+  const conversations = conversationCatalogue(archive?.messages);
+  if (!input) return { policy, conversations };
+  const next = validateConversationPolicy(input);
+  if (input.expectedRevision !== policy.revision) throw new Error("تغيرت الصلاحيات. أعد فتح نافذة الاختيار.");
+  const known = new Set([...conversations.map((item) => item.address), ...policy.addresses]);
+  if (next.addresses.some((address) => !known.has(address))) throw new Error("تتضمن الصلاحيات محادثة غير موجودة.");
+  target.conversationPermissions = { ...target.conversationPermissions,
+    [workspaceId]: { addresses: next.mode === "all" ? "null" : JSON.stringify(next.addresses), revision: crypto.randomUUID() } };
+  await writeState(state);
+  return { ok: true };
 }

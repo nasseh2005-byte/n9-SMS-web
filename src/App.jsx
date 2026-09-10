@@ -60,6 +60,7 @@ import {
   quoteCsvCell,
   toIsoTimestamp,
 } from "./dataUtils.js";
+import { mergeMessageArchives } from "./xmlImport.js";
 import { buildConversationReferenceRows } from "./conversationExportUtils.js";
 import { StoredZipBuilder } from "./zipUtils.js";
 import {
@@ -69,6 +70,8 @@ import {
   sanitizeEvidenceName,
 } from "./pdfUtils.js";
 import { sampleMatchTerms, sampleMessages } from "./sampleData.js";
+import { ConversationPermissionsEditor } from "./ConversationPermissionsEditor.jsx";
+import { CONVERSATION_READ_ONLY } from "./conversationAccess.js";
 import {
   createUser,
   createWorkspace,
@@ -173,28 +176,18 @@ function groupMessages(messages) {
 }
 
 function parseXmlFile(file) {
-  return file.text().then((text) => {
-    const documentNode = new DOMParser().parseFromString(text, "application/xml");
-    const parserError = documentNode.querySelector("parsererror");
-    if (parserError) throw new Error("تعذر قراءة ملف XML. تأكد أنه صادر من SMS Backup & Restore.");
-
-    const nodes = [...documentNode.getElementsByTagName("sms")];
-    if (!nodes.length) throw new Error("لم نجد رسائل SMS داخل الملف.");
-
-    return nodes.map((node, index) => normalizeMessageIdentity({
-      id: `xml-${node.getAttribute("date") || index}-${index}-${crypto.randomUUID()}`,
-      address: node.getAttribute("address") || "غير معروف",
-      contactName: node.getAttribute("contact_name") || node.getAttribute("address") || "غير معروف",
-      date: parseXmlTimestamp(node.getAttribute("date")),
-      dateSent: parseXmlTimestamp(node.getAttribute("date_sent")),
-      rawDate: node.getAttribute("date") || "",
-      rawDateSent: node.getAttribute("date_sent") || "",
-      readableDate: node.getAttribute("readable_date") || "",
-      type: node.getAttribute("type") || "1",
-      read: node.getAttribute("read") || "1",
-      status: node.getAttribute("status") || "0",
-      body: node.getAttribute("body") || "",
-    }));
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL("./xmlImport.worker.js", import.meta.url), { type: "module" });
+    worker.onmessage = ({ data }) => {
+      worker.terminate();
+      if (data.error) reject(new Error(data.error));
+      else resolve(data.messages);
+    };
+    worker.onerror = () => {
+      worker.terminate();
+      reject(new Error("تعذر تشغيل قارئ XML. أعد تحميل الصفحة ثم حاول مجددًا."));
+    };
+    worker.postMessage(file);
   });
 }
 
@@ -566,7 +559,7 @@ function EvidencePhone({ clockMode, customTime, deviceStyle = "android", message
   );
 }
 
-function ImportDialog({ busy, onClose, onXml, onSheet }) {
+function ImportDialog({ busy, onClose, onXml, onSheet, readOnly = false }) {
   const xmlRef = useRef(null);
   const sheetRef = useRef(null);
   return (
@@ -581,10 +574,10 @@ function ImportDialog({ busy, onClose, onXml, onSheet }) {
           <button aria-label="إغلاق" className="icon-button" onClick={onClose} type="button"><Icon path={mdiClose} size={1.05} /></button>
         </header>
         <div className="import-options">
-          <button className="import-card primary-import" disabled={busy} onClick={() => xmlRef.current?.click()} type="button">
+          <button className="import-card primary-import" disabled={busy || readOnly} title={readOnly ? CONVERSATION_READ_ONLY : ""} onClick={() => xmlRef.current?.click()} type="button">
             <span className="import-card-icon"><Icon path={mdiFileDocumentOutline} size={1.35} /></span>
             <strong>رفع نسخة الرسائل XML</strong>
-            <small>يدعم ملفات SMS Backup & Restore</small>
+            <small>يدعم SMS Backup & Restore وملفات iPhone XML (SMS وiMessage)</small>
             <span className="card-action">اختيار الملف <Icon path={mdiTrayArrowUp} size={0.76} /></span>
           </button>
           <button className="import-card" disabled={busy} onClick={() => sheetRef.current?.click()} type="button">
@@ -900,7 +893,7 @@ function WorkspaceDialog({ activeId, busy, onClose, onCreate, onSelect, workspac
           {workspaces.map((workspace) => (
             <button className={workspace.id === activeId ? "workspace-card is-active" : "workspace-card"} key={workspace.id} onClick={() => onSelect(workspace.id)} type="button">
               <span className="workspace-card-icon"><Icon path={mdiOfficeBuildingOutline} size={1.02} /></span>
-              <span className="workspace-card-copy"><strong>{workspace.name}</strong><small>{workspace.messageCount.toLocaleString("ar-SA")} رسالة · {workspace.sourceName}</small></span>
+              <span className="workspace-card-copy"><strong>{workspace.name}</strong><small>{workspace.readOnly ? "محادثات محددة حسب صلاحياتك" : `${workspace.messageCount.toLocaleString("ar-SA")} رسالة · ${workspace.sourceName}`}</small></span>
               {workspace.id === activeId && <span className="workspace-active-mark"><Icon path={mdiCheckCircle} size={0.82} /> مفتوحة</span>}
             </button>
           ))}
@@ -950,6 +943,7 @@ function UserAccessRow({ currentUserId, onUpdate, user, workspaces }) {
         <label className="user-password-reset"><Icon path={mdiLockOutline} size={0.68} /><input aria-label={`كلمة مرور جديدة للمستخدم ${user.username}`} inputMode="numeric" maxLength={12} onChange={(event) => setNewPassword(event.target.value.replace(/\D/g, ""))} placeholder="كلمة جديدة (اختياري)" type="password" value={newPassword} /></label>
         <button className="save-permissions" disabled={saving || Boolean(newPassword && !/^\d{4,12}$/.test(newPassword))} onClick={save} type="button">{saving ? "جاري الحفظ…" : "حفظ الصلاحيات"}</button>
       </div>
+      <ConversationPermissionsEditor user={user} workspaces={workspaces} />
     </article>
   );
 }
@@ -994,6 +988,7 @@ function UsersDialog({ currentUser, loading, onClose, onCreate, onUpdate, users,
             <label><span>كلمة مرور رقمية</span><input inputMode="numeric" maxLength={12} minLength={4} onChange={(event) => updateField("password", event.target.value.replace(/\D/g, ""))} pattern="[0-9]{4,12}" required type="password" value={form.password} /></label>
             <label><span>نوع الحساب</span><select onChange={(event) => updateField("role", event.target.value)} value={form.role}><option value="user">مستخدم</option><option value="admin">مدير</option></select></label>
             <fieldset><legend>الشركات المفوض عليها</legend>{workspaces.map((workspace) => <label key={workspace.id}><input checked={form.workspaceIds.includes(workspace.id)} onChange={() => toggleWorkspace(workspace.id)} type="checkbox" /><span>{workspace.name}</span></label>)}</fieldset>
+            {form.role === "user" && <p>بعد إنشاء الحساب، افتح «تحديد المحادثات المسموح بها» لاختيار ما يظهر له. يبدأ الحساب الجديد دون محادثات مفوضة.</p>}
             <button disabled={saving} type="submit"><Icon path={mdiPlus} size={0.78} /> {saving ? "جاري الإضافة…" : "إضافة المستخدم"}</button>
           </form>
           <div className="users-list">
@@ -1005,17 +1000,6 @@ function UsersDialog({ currentUser, loading, onClose, onCreate, onUpdate, users,
   );
 }
 
-function mergeMessageArchives(currentMessages, importedMessages) {
-  const seen = new Set(currentMessages.map((message) => [message.address, message.date, message.type, message.body].join("\u241f")));
-  const merged = [...currentMessages];
-  for (const message of importedMessages) {
-    const key = [message.address, message.date, message.type, message.body].join("\u241f");
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(message);
-  }
-  return sortMessages(merged);
-}
 
 const comparableMessageCache = new WeakMap();
 
@@ -1243,6 +1227,7 @@ export function App() {
     }
     let cancelled = false;
     setRestoringArchive(true);
+    applyArchive({ sourceName: "جاري تحميل المحادثات المصرح بها", messages: [] });
     getWorkspaceArchive(activeWorkspaceId)
       .then((archive) => {
         if (!cancelled) applyArchive(archive);
@@ -1257,7 +1242,33 @@ export function App() {
         if (!cancelled) setRestoringArchive(false);
       });
     return () => { cancelled = true; };
-  }, [activeWorkspaceId, currentUser?.id]);
+  }, [activeWorkspaceId, currentUser?.id, activeWorkspace?.accessRevision]);
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role === "admin") return undefined;
+    let cancelled = false;
+    let checking = false;
+    async function refreshAccess() {
+      if (checking) return;
+      checking = true;
+      try {
+        const refreshed = await listWorkspaces();
+        if (cancelled) return;
+        setWorkspaces(refreshed);
+        setActiveWorkspaceId((id) => refreshed.some((workspace) => workspace.id === id) ? id : refreshed[0]?.id || null);
+      } catch (error) {
+        if (!cancelled && error.status === 401) {
+          applyArchive({ messages: [] });
+          setCurrentUser(null);
+          setWorkspaces([]);
+          setActiveWorkspaceId(null);
+        }
+      } finally { checking = false; }
+    }
+    const timer = window.setInterval(refreshAccess, 30000);
+    window.addEventListener("focus", refreshAccess);
+    return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener("focus", refreshAccess); };
+  }, [currentUser?.id, currentUser?.role]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -1316,6 +1327,11 @@ export function App() {
   async function handleXmlUpload(event) {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (activeWorkspace?.readOnly) {
+      setToast(CONVERSATION_READ_ONLY);
+      event.target.value = "";
+      return;
+    }
     if (!activeWorkspace) {
       setToast("أنشئ مساحة شركة أولًا ثم ارفع ملف الرسائل داخلها.");
       event.target.value = "";
@@ -2119,7 +2135,7 @@ export function App() {
         </div>
       </aside>
 
-      {importOpen && <ImportDialog busy={busy} onClose={() => !busy && setImportOpen(false)} onSheet={handleSheetUpload} onXml={handleXmlUpload} />}
+      {importOpen && <ImportDialog busy={busy} readOnly={activeWorkspace?.readOnly} onClose={() => !busy && setImportOpen(false)} onSheet={handleSheetUpload} onXml={handleXmlUpload} />}
       {canCreateManualMessages && composerOpen && <MessageComposerDialog busy={busy} conversations={conversations} onClose={() => { if (!busy) { setComposerOpen(false); setActiveNav("messages"); } }} onCreate={handleCreateManualMessage} selectedAddress={selectedConversation?.address} />}
       {workspaceDialogOpen && <WorkspaceDialog activeId={activeWorkspace?.id} busy={managementBusy} onClose={() => setWorkspaceDialogOpen(false)} onCreate={handleCreateWorkspace} onSelect={handleSelectWorkspace} workspaces={workspaces} />}
       {usersDialogOpen && <UsersDialog currentUser={currentUser} loading={managementBusy} onClose={() => setUsersDialogOpen(false)} onCreate={handleCreateUser} onUpdate={handleUpdateUser} users={users} workspaces={workspaces} />}
