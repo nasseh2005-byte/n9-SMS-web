@@ -50,7 +50,7 @@ export function conversationCatalogue(messages) {
 }
 
 // Keep each response well below Vercel's response limit, including UTF-8 Arabic text.
-export function conversationPage(items, url, revision) {
+export function conversationPage(items, url, revision, { limit = 1000 } = {}) {
   const cursor = Number(url.searchParams.get("cursor") || 0);
   if (!Number.isSafeInteger(cursor) || cursor < 0 || cursor > items.length) throw new Error("موضع القراءة غير صالح.");
   if (cursor && url.searchParams.get("revision") !== revision) {
@@ -61,7 +61,7 @@ export function conversationPage(items, url, revision) {
   let bytes = 0;
   const page = [];
   const encoder = new TextEncoder();
-  for (let index = cursor; index < items.length && page.length < 1000; index += 1) {
+  for (let index = cursor; index < items.length && page.length < limit; index += 1) {
     const size = encoder.encode(JSON.stringify(items[index])).byteLength + 1;
     if (size > 3 * 1024 * 1024) throw new Error("إحدى الرسائل تتجاوز حجم القراءة الآمن. راجع المشرف.");
     if (bytes + size > 3 * 1024 * 1024) break;

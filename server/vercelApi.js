@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { createArchiveReader } from "./archiveCache.js";
 import { del, get, head, issueSignedToken, presignUrl } from "@vercel/blob";
 import { hasManualMessageChanges } from "../src/archivePermissions.js";
 import { CONVERSATION_READ_ONLY, conversationCatalogue, conversationPage, decodeConversationPolicy, filterConversationArchive, validateConversationPolicy } from "../src/conversationAccess.js";
@@ -501,13 +502,13 @@ async function createArchiveUpload(sql, user, workspace, request) {
   });
 }
 
-async function readPrivateArchive(archiveKey) {
-  if (!archiveKey) return { messages: [] };
+const readPrivateArchive = createArchiveReader(async (archiveKey) => {
   const result = await get(archiveKey, { access: "private", useCache: false });
-  if (!result || result.statusCode !== 200 || !result.stream) return { messages: [] };
+  if (!result || result.statusCode !== 200 || !result.stream) throw new Error("تعذر قراءة أرشيف الشركة. أعد المحاولة.");
   const archive = await new Response(result.stream).json();
-  return Array.isArray(archive?.messages) ? archive : { messages: [] };
-}
+  if (!Array.isArray(archive?.messages)) throw new Error("الأرشيف السحابي غير صالح. راجع المشرف.");
+  return archive;
+});
 
 async function completeArchiveUpload(sql, user, workspace, request) {
   if (!sameOrigin(request)) return fail("تعذر التحقق من مصدر الطلب.", 403);
@@ -645,8 +646,8 @@ async function workspacesRoute(request, sql, user, path, { readArchive = readPri
     const latestPolicy = await conversationPolicy(sql, user, workspaceId);
     if (latestPolicy.revision !== policy.revision) return fail("تغيرت صلاحيات المحادثات. أعد تحميل الأرشيف.", 409);
     const filtered = filterConversationArchive(archive, latestPolicy);
-    const page = conversationPage(filtered.messages, new URL(request.url), `${workspace.archive_version}:${policy.revision}`);
-    return json({ sourceName: filtered.sourceName || "أرشيف XML", readOnly: policy.mode === "selected", messages: page.items, nextCursor: page.nextCursor, revision: page.revision });
+    const page = conversationPage(filtered.messages, new URL(request.url), `${workspace.archive_version}:${policy.revision}`, { limit: 10000 });
+    return json({ sourceName: filtered.sourceName || "أرشيف XML", readOnly: policy.mode === "selected", messages: page.items, nextCursor: page.nextCursor, revision: page.revision, total: filtered.messages.length });
   }
   if (policy.mode === "selected") return fail(CONVERSATION_READ_ONLY, 403);
   if (request.method === "POST" && action === "upload-url") return createArchiveUpload(sql, user, workspace, request);

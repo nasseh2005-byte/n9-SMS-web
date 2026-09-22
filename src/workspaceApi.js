@@ -12,6 +12,8 @@ import {
   localConversationPermissions,
 } from "./localWorkspaceStore.js";
 
+import { collectArchivePages } from "./archiveDownload.js";
+
 const storageMode = import.meta.env.VITE_N9_STORAGE_MODE || "server";
 const localMode = import.meta.env.DEV || storageMode === "local";
 const vercelMode = !import.meta.env.DEV && storageMode === "vercel";
@@ -66,26 +68,19 @@ export async function createWorkspace(name) {
   return (await request("/api/workspaces", { method: "POST", body: JSON.stringify({ name }) })).workspace;
 }
 
-export async function getWorkspaceArchive(workspaceId) {
+export async function getWorkspaceArchive(workspaceId, { signal, onProgress } = {}) {
   if (localMode) return localGetArchive(workspaceId);
   const path = `/api/workspaces/${encodeURIComponent(workspaceId)}/archive`;
-  const descriptor = await request(path);
+  const descriptor = await request(path, { signal });
   if (descriptor.archiveUrl) {
-    const response = await fetch(descriptor.archiveUrl, { cache: "no-store" });
+    const response = await fetch(descriptor.archiveUrl, { cache: "no-store", signal });
     if (!response.ok) throw new Error("تعذر تنزيل أرشيف الشركة من التخزين السحابي.");
     const archive = await response.json();
     if (!Array.isArray(archive?.messages)) throw new Error("الأرشيف السحابي غير صالح.");
     return archive;
   }
-  const messages = [...(descriptor.messages || [])];
-  let cursor = descriptor.nextCursor;
-  while (cursor !== null && cursor !== undefined) {
-    const page = await request(`${path}?cursor=${cursor}&revision=${encodeURIComponent(descriptor.revision)}`);
-    messages.push(...page.messages);
-    if (page.nextCursor !== null && page.nextCursor <= cursor) throw new Error("تعذر متابعة تحميل المحادثات.");
-    cursor = page.nextCursor;
-  }
-  return { ...descriptor, messages };
+  return collectArchivePages(descriptor, (cursor, revision) =>
+    request(`${path}?cursor=${cursor}&revision=${encodeURIComponent(revision)}`, { signal }), { signal, onProgress });
 }
 
 export async function getConversationPermissions(userId, workspaceId) {

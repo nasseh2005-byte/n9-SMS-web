@@ -65,6 +65,7 @@ test("Vercel never exposes the company Blob URL to a restricted user or includes
   assert.equal(response.status, 200);
   assert.deepEqual(data.messages.map((message) => message.id), ["a", "c"]);
   assert.equal(data.archiveUrl, undefined);
+  assert.equal(data.total, 2);
   assert.equal(JSON.stringify(data).includes("hidden"), false);
 });
 

@@ -1517,3 +1517,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   .user-access-actions { align-items: stretch; flex-direction: column; }
   .user-password-reset { width: 100%; }
 }
+.archive-load-status { display: grid; gap: 8px; padding: 16px; margin: 8px 16px; border: 1px solid var(--line); border-radius: 16px; color: var(--ink); background: var(--surface); font-size: 12px; }
+.archive-load-status progress { width: 100%; height: 8px; accent-color: #1762d5; }
+.archive-load-status small { opacity: .75; }
+.archive-load-status button { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; color: inherit; background: var(--surface); cursor: pointer; }
+.archive-load-status.is-error { border-color: #ba4747; }

@@ -1101,6 +1101,9 @@ export function App() {
   const [conversationPanelOpen, setConversationPanelOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [restoringArchive, setRestoringArchive] = useState(true);
+  const [archiveProgress, setArchiveProgress] = useState(null);
+  const [archiveError, setArchiveError] = useState("");
+  const [archiveRetry, setArchiveRetry] = useState(0);
   const [toast, setToast] = useState("");
   const [sheetReport, setSheetReport] = useState("");
   const [exportingMatch, setExportingMatch] = useState(null);
@@ -1226,23 +1229,27 @@ export function App() {
       return undefined;
     }
     let cancelled = false;
+    const controller = new AbortController();
     setRestoringArchive(true);
+    setArchiveProgress(null);
+    setArchiveError("");
     applyArchive({ sourceName: "جاري تحميل المحادثات المصرح بها", messages: [] });
-    getWorkspaceArchive(activeWorkspaceId)
+    getWorkspaceArchive(activeWorkspaceId, { signal: controller.signal, onProgress: (progress) => { if (!cancelled) setArchiveProgress(progress); } })
       .then((archive) => {
         if (!cancelled) applyArchive(archive);
       })
       .catch((error) => {
         if (!cancelled) {
           applyArchive({ sourceName: "تعذر تحميل الأرشيف", messages: [] });
+          setArchiveError(error.message || "تعذر تحميل رسائل الشركة.");
           setToast(error.message || "تعذر تحميل رسائل الشركة.");
         }
       })
       .finally(() => {
         if (!cancelled) setRestoringArchive(false);
       });
-    return () => { cancelled = true; };
-  }, [activeWorkspaceId, currentUser?.id, activeWorkspace?.accessRevision]);
+    return () => { cancelled = true; controller.abort(); };
+  }, [activeWorkspaceId, currentUser?.id, activeWorkspace?.accessRevision, archiveRetry]);
 
   useEffect(() => {
     if (!currentUser || currentUser.role === "admin") return undefined;
@@ -1882,6 +1889,12 @@ export function App() {
           <Icon path={mdiChevronDown} size={0.78} />
         </button>
         <div className="source-pill"><Icon path={mdiCheckCircle} size={0.72} /><span>{restoringArchive ? "جاري تحميل أرشيف الشركة…" : `${sourceName} · ${messages.length.toLocaleString("ar-SA")} رسالة`}</span></div>
+        {restoringArchive && <div className="archive-load-status" role="status">
+          <strong>جاري تحميل رسائلك المصرح بها</strong>
+          {archiveProgress ? <><progress aria-label="تقدم تحميل الرسائل" max={archiveProgress.total || undefined} value={archiveProgress.total ? archiveProgress.loaded : undefined} /><span>{archiveProgress.loaded.toLocaleString("ar-SA")} {archiveProgress.total !== null ? `من ${archiveProgress.total.toLocaleString("ar-SA")}` : ""} رسالة</span></> : <span>جارٍ الاتصال بالأرشيف…</span>}
+          <small>ستظهر المحادثات بعد اكتمال التحميل.</small>
+        </div>}
+        {!restoringArchive && archiveError && <div className="archive-load-status is-error" role="alert"><strong>لم يكتمل تحميل الرسائل</strong><span>{archiveError}</span><button type="button" onClick={() => setArchiveRetry((value) => value + 1)}>إعادة المحاولة</button></div>}
         <label className="search-box">
           <Icon path={mdiMagnify} size={0.9} />
           <input aria-label="البحث في جميع الرسائل" onChange={(event) => { setQuery(event.target.value); setSearchLimit(100); }} placeholder="ابحث دون إخفاء المحادثات" value={query} />
@@ -1906,12 +1919,12 @@ export function App() {
             </section>
           )}
           {!query && <div className="conversation-count embedded-count"><span>المحادثات</span><span>عرض {Math.min(conversationLimit, conversations.length).toLocaleString("ar-SA")} من {conversations.length.toLocaleString("ar-SA")}</span></div>}
-          {!conversations.length && !restoringArchive && (
+          {!conversations.length && !restoringArchive && !archiveError && (
             <div className="company-empty-state">
               <span><Icon path={mdiOfficeBuildingOutline} size={1.25} /></span>
               <strong>لا توجد رسائل في {activeWorkspace?.name}</strong>
-              <small>{canCreateManualMessages ? "ارفع XML أو أنشئ أول رسالة، وسيبقى أرشيف هذه الشركة منفصلًا ومحفوظًا." : "ارفع XML لبدء أرشيف هذه الشركة، وسيبقى منفصلًا ومحفوظًا."}</small>
-              <div className="empty-state-actions"><button onClick={() => setImportOpen(true)} type="button"><Icon path={mdiTrayArrowUp} size={0.75} /> رفع XML</button>{canCreateManualMessages && <button onClick={() => { setActiveNav("composer"); setComposerOpen(true); }} type="button"><Icon path={mdiMessagePlusOutline} size={0.75} /> إنشاء رسالة</button>}</div>
+              <small>{activeWorkspace?.readOnly ? "لا توجد محادثات متاحة ضمن صلاحياتك الحالية. اطلب من المشرف مراجعة المحادثات المفوضة لك." : canCreateManualMessages ? "ارفع XML أو أنشئ أول رسالة، وسيبقى أرشيف هذه الشركة منفصلًا ومحفوظًا." : "ارفع XML لبدء أرشيف هذه الشركة، وسيبقى منفصلًا ومحفوظًا."}</small>
+              {!activeWorkspace?.readOnly && <div className="empty-state-actions"><button onClick={() => setImportOpen(true)} type="button"><Icon path={mdiTrayArrowUp} size={0.75} /> رفع XML</button>{canCreateManualMessages && <button onClick={() => { setActiveNav("composer"); setComposerOpen(true); }} type="button"><Icon path={mdiMessagePlusOutline} size={0.75} /> إنشاء رسالة</button>}</div>}
             </div>
           )}
           {conversations.slice(0, conversationLimit).map((conversation) => (
